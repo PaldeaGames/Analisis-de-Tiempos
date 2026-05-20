@@ -186,6 +186,19 @@ textarea:focus{outline:none;border-color:var(--accent);}
 
 /* PERSISTENCIA badge */
 .persist-badge{display:inline-flex;align-items:center;gap:4px;font-size:10px;color:var(--green);letter-spacing:1px;padding:2px 8px;border:1px solid var(--green);margin-left:8px;opacity:.7;}
+
+/* LISTA PROGRESO TIPOS */
+.tipos-progreso{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:6px;margin-bottom:14px;}
+.tipo-prog-item{display:flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid var(--border);background:#0c0c0c;cursor:pointer;transition:all .2s;}
+.tipo-prog-item:hover{border-color:var(--accent);}
+.tipo-prog-item.listo{border-color:var(--green);background:#0a140a;}
+.tipo-prog-item.activo{border-color:var(--accent);background:#1a1800;}
+.tipo-prog-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+.tipo-prog-nombre{font-family:var(--display);font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:1px;flex:1;}
+.tipo-prog-estado{font-size:10px;color:var(--muted);}
+.tipo-prog-item.listo .tipo-prog-estado{color:var(--green);}
+.tipo-prog-item.activo .tipo-prog-estado{color:var(--accent);}
+.tipo-prog-horas{font-size:9px;color:var(--muted);margin-top:1px;}
 </style>
 </head>
 <body>
@@ -268,49 +281,48 @@ textarea:focus{outline:none;border-color:var(--accent);}
 
   <!-- CONTEO POR TIPO CON CRONÓMETRO -->
   <div class="panel">
-    <div class="section-title">Conteo por Tipo de Energía (con cronómetro)</div>
-    <div style="font-size:11px;color:var(--muted);margin-bottom:10px;">Elige el tipo, inicia el cronómetro, cuenta, termina y guarda. O ingresa hora inicio/fin desde el cuaderno.</div>
+    <div class="section-title">Conteo por Tipo de Energía</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:12px;">Elige el tipo, usa el cronómetro o ingresa desde el cuaderno. El botón Guardar cambia según el tipo seleccionado.</div>
 
-    <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;">
-      <select id="tipo-selector" style="flex:1;">
+    <!-- Lista de progreso visible siempre -->
+    <div class="tipos-progreso" id="tipos-progreso"></div>
+
+    <div style="margin-bottom:12px;">
+      <div class="field-label">Tipo de energía activo</div>
+      <select id="tipo-selector" style="width:100%;font-size:14px;padding:8px;" onchange="cambiarTipoActivo()">
         <option value="">— Elige tipo de energía —</option>
       </select>
-      <button class="btn primary" onclick="iniciarConteoPorTipo()">▶ Iniciar tipo</button>
     </div>
 
-    <div id="conteo-tipo-activo" style="display:none;" class="conteo-tipo-card">
-      <div class="ctc-header">
-        <div class="tipo-dot" id="ctc-dot" style="width:12px;height:12px;border-radius:50%;"></div>
-        <div style="font-family:var(--display);font-weight:700;font-size:15px;text-transform:uppercase;" id="ctc-nombre">—</div>
+    <!-- Card idéntica a preparacion/conteo-global -->
+    <div class="crono-card" id="card-tipo-activo" style="display:none;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+        <div id="ctc-dot" style="width:12px;height:12px;border-radius:50%;flex-shrink:0;background:#444;"></div>
+        <div class="crono-nombre" id="ctc-nombre">—</div>
       </div>
-      <div class="ctc-body">
-        <div class="ctc-timer-col">
-          <div class="ctc-timer" id="ctc-timer">00:00:00</div>
-          <div class="ctc-hora-inicio" id="ctc-hinicio">—</div>
-          <div class="ctc-estado" id="ctc-estado">— PENDIENTE</div>
-          <div class="btn-row" style="margin-bottom:6px;">
-            <button class="btn primary" id="btn-ctc-toggle" onclick="toggleConteoTipo()">▶ Iniciar</button>
-          </div>
+      <div class="crono-tiempo" id="ctc-timer">00:00:00</div>
+      <div class="crono-hora-inicio" id="ctc-hinicio">—</div>
+      <div class="crono-estado" id="ctc-estado">— PENDIENTE</div>
+      <div class="btn-row">
+        <button class="btn primary" id="btn-ctc-toggle" onclick="toggleConteoTipo()">▶ Iniciar</button>
+      </div>
+      <div class="manual-box">
+        <div class="manual-label">Ingresa desde cuaderno:</div>
+        <div class="manual-grid">
+          <div><div class="field-label">Inicio</div><input type="time" id="ctc-min"/></div>
+          <div><div class="field-label">Fin</div><input type="time" id="ctc-mfin"/></div>
         </div>
-        <div>
-          <div class="ctc-manual">
-            <div class="ctc-manual-label">Cuaderno — hora inicio y fin:</div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:5px;">
-              <div><div class="field-label">Inicio</div><input type="time" id="ctc-min"/></div>
-              <div><div class="field-label">Fin</div><input type="time" id="ctc-mfin"/></div>
-            </div>
-          </div>
-          <button class="btn success" onclick="guardarConteotipo()" style="margin-top:4px;">Guardar</button>
-        </div>
+        <button class="btn success" id="btn-guardar-tipo" onclick="guardarConteotipo()">Guardar conteo</button>
       </div>
     </div>
 
-    <!-- Tipos guardados -->
-    <div class="saved-tipos-list" id="saved-tipos-list"></div>
+    <div class="saved-tipos-list" id="saved-tipos-list" style="margin-top:12px;"></div>
 
-    <!-- Conteo de cantidades -->
     <div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px;">
-      <div class="section-title" style="border:none;padding:0;margin-bottom:10px;"><span>Cantidades por Tipo</span><button class="btn success" onclick="copiarConteo()">Copiar conteo</button></div>
+      <div class="section-title" style="border:none;padding:0;margin-bottom:10px;">
+        <span>Cantidades por Tipo</span>
+        <button class="btn success" onclick="copiarConteo()">Copiar conteo</button>
+      </div>
       <div style="font-size:11px;color:var(--muted);margin-bottom:10px;">Ordenado de menor a mayor automáticamente.</div>
       <div class="tipos-grid" id="tipos-container"></div>
       <div class="total-bar"><span class="total-label">TOTAL CARTAS EN LOTE</span><span class="total-val" id="total-cartas">0</span></div>
@@ -664,23 +676,28 @@ function initTipoSelector(){
   });
 }
 
-function iniciarConteoPorTipo(){
+function cambiarTipoActivo(){
   const id=document.getElementById('tipo-selector').value;
-  if(!id)return;
+  if(!id){document.getElementById('card-tipo-activo').style.display='none';return;}
   tipoActivoConteo=id;
   const t=TIPOS.find(x=>x.id===id);
   const s=conteoTipos[id];
-  const box=document.getElementById('conteo-tipo-activo');
-  box.style.display='block';
-  box.className='conteo-tipo-card'+(s.estado==='activa'?' activo':s.estado==='terminado'?' guardado':'');
+  const card=document.getElementById('card-tipo-activo');
+  card.style.display='block';
+  card.className='crono-card'+(s.estado==='activa'?' activo':s.estado==='terminado'?' terminado':'');
   document.getElementById('ctc-dot').style.background=t.color;
   document.getElementById('ctc-nombre').textContent=t.label;
   document.getElementById('ctc-timer').textContent=fmt(s.seg);
-  document.getElementById('ctc-hinicio').textContent=s.horaInicio?'Inicio: '+(typeof s.horaInicio==='string'?s.horaInicio:s.horaInicio.toTimeString().slice(0,5)):'—';
+  const hi=s.horaInicio?(typeof s.horaInicio==='string'?s.horaInicio:s.horaInicio.toTimeString().slice(0,5)):'';
+  const hf=s.horaFin?(typeof s.horaFin==='string'?s.horaFin:s.horaFin.toTimeString().slice(0,5)):'';
+  document.getElementById('ctc-hinicio').textContent=hi?(hi+(hf?' → '+hf:'')):'—';
   document.getElementById('ctc-estado').textContent=s.estado==='activa'?'● EN CURSO':s.estado==='terminado'?'✓ GUARDADO':'— PENDIENTE';
   const btn=document.getElementById('btn-ctc-toggle');
   btn.textContent=s.estado==='pendiente'?'▶ Iniciar':s.estado==='activa'?'■ Terminar':'↺ Reiniciar';
   btn.className='btn '+(s.estado==='activa'?'danger':s.estado==='pendiente'?'primary':'');
+  const btnG=document.getElementById('btn-guardar-tipo');
+  if(btnG)btnG.textContent='Guardar conteo '+t.label;
+  renderTiposProgreso();
 }
 
 function toggleConteoTipo(){
@@ -691,12 +708,13 @@ function toggleConteoTipo(){
     s.iv=setInterval(()=>{s.seg++;const el=document.getElementById('ctc-timer');if(el)el.textContent=fmt(s.seg);},1000);
   } else if(s.estado==='activa'){
     clearInterval(s.iv);s.horaFin=new Date();s.estado='terminado';
-    guardarLS();renderSavedTipos();initTipoSelector();
+    guardarLS();renderSavedTipos();initTipoSelector();renderTiposProgreso();
   } else {
     clearInterval(s.iv);
     conteoTipos[id]={seg:0,iv:null,estado:'pendiente',horaInicio:null,horaFin:null,esManual:false};
   }
-  iniciarConteoPorTipo();
+  cambiarTipoActivo();
+  renderTiposProgreso();
 }
 
 function guardarConteotipo(){
@@ -711,11 +729,14 @@ function guardarConteotipo(){
     if(seg<=0){alert('Fin debe ser mayor que inicio.');return;}
     clearInterval(s.iv);
     s.seg=seg;s.esManual=true;s.horaInicio=ini;s.horaFin=fin;
+  } else if(s.estado!=='activa'&&s.seg===0){
+    alert('Ingresa hora inicio y fin, o usa el cronómetro.');return;
   }
   s.estado='terminado';
   clearInterval(s.iv);
   guardarLS();renderSavedTipos();initTipoSelector();
-  iniciarConteoPorTipo();
+  cambiarTipoActivo();
+  renderTiposProgreso();
   document.getElementById('ctc-min').value='';
   document.getElementById('ctc-mfin').value='';
 }
@@ -738,6 +759,32 @@ function renderSavedTipos(){
         <span class="st-total">${conteo[t.id]} cartas</span>
       </div>`;
     }).join('');
+}
+
+function renderTiposProgreso(){
+  const c=document.getElementById('tipos-progreso');
+  if(!c)return;
+  c.innerHTML=TIPOS.map(t=>{
+    const s=conteoTipos[t.id];
+    const listo=s.estado==='terminado';
+    const activo=tipoActivoConteo===t.id&&s.estado==='activa';
+    const hi=s.horaInicio?(typeof s.horaInicio==='string'?s.horaInicio:s.horaInicio.toTimeString().slice(0,5)):'';
+    const hf=s.horaFin?(typeof s.horaFin==='string'?s.horaFin:s.horaFin.toTimeString().slice(0,5)):'';
+    return `<div class="tipo-prog-item${listo?' listo':activo?' activo':''}" onclick="seleccionarTipoProg('${t.id}')">
+      <div class="tipo-prog-dot" style="background:${t.color}"></div>
+      <div>
+        <div class="tipo-prog-nombre">${t.label}</div>
+        ${listo?`<div class="tipo-prog-horas">${hi}→${hf}</div>`:''}
+      </div>
+      <div class="tipo-prog-estado">${listo?'✓':'activo'===activo?'●':'—'}</div>
+    </div>`;
+  }).join('');
+}
+
+function seleccionarTipoProg(id){
+  document.getElementById('tipo-selector').value=id;
+  cambiarTipoActivo();
+  document.getElementById('card-tipo-activo').scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 
 // ═══ CANTIDADES ═══
@@ -888,25 +935,39 @@ function otraSesionArmado(){
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
-// ═══ PAUSAS ═══
+// ═══ PAUSAS (hora real — sobrevive cierre de página) ═══
 function togglePausa(ctx){
   const p=pausaCtx[ctx];
-  const liveEl=document.getElementById('pausa-live-'+ctx);
   const btn=document.getElementById('btn-pausa-'+ctx);
+  const liveEl=document.getElementById('pausa-live-'+ctx);
   const notaEl=document.getElementById('pausa-nota-'+ctx);
   const etapaEl=document.getElementById('pausa-etapa-'+ctx);
   if(!p.actual){
-    p.actual={inicio:new Date(),seg:0,nota:'',etapa:''};
-    liveEl.style.display='block';btn.classList.add('on');btn.textContent='▶ Reanudar';
-    p.iv=setInterval(()=>{p.actual.seg++;document.getElementById('pausa-timer-'+ctx).textContent=fmt(p.actual.seg);},1000);
+    const horaInicio=new Date();
+    const horaInicioStr=horaInicio.toTimeString().slice(0,5);
+    p.actual={horaInicio,horaInicioStr};
+    localStorage.setItem('pausa_activa_'+ctx,JSON.stringify({horaInicioISO:horaInicio.toISOString(),horaInicioStr}));
+    liveEl.style.display='block';
+    liveEl.innerHTML='⏸ EN PAUSA desde <strong>'+horaInicioStr+'</strong>';
+    btn.classList.add('on');btn.textContent='▶ Reanudar';
+    guardarLS();
   } else {
-    clearInterval(p.iv);p.actual.fin=new Date();
-    p.actual.nota=notaEl?notaEl.value:'';
-    p.actual.etapa=etapaEl?etapaEl.value:'';
-    p.lista.push({...p.actual});p.actual=null;
-    liveEl.style.display='none';btn.classList.remove('on');btn.textContent='⏸ Pausa';
+    const horaFin=new Date();
+    const horaFinStr=horaFin.toTimeString().slice(0,5);
+    const seg=Math.max(0,Math.round((horaFin-p.actual.horaInicio)/1000));
+    p.lista.push({
+      horaInicio:p.actual.horaInicioStr,
+      horaFin:horaFinStr,
+      seg,
+      nota:notaEl?notaEl.value:'',
+      etapa:etapaEl?etapaEl.value:''
+    });
+    p.actual=null;
+    localStorage.removeItem('pausa_activa_'+ctx);
+    liveEl.style.display='none';liveEl.innerHTML='';
+    btn.classList.remove('on');btn.textContent='⏸ Pausa';
     if(notaEl)notaEl.value='';
-    renderPausas(ctx);
+    renderPausas(ctx);guardarLS();
   }
 }
 function renderPausas(ctx){
@@ -915,11 +976,26 @@ function renderPausas(ctx){
   if(!p.lista.length){c.innerHTML='<div style="color:var(--muted);font-size:11px;">Sin pausas.</div>';return;}
   c.innerHTML=p.lista.map((it,i)=>`<div class="pausa-item">
     <span style="color:var(--muted);min-width:22px;">#${i+1}</span>
-    <span style="color:var(--accent);min-width:60px;">${fmt(it.seg)}</span>
+    <span style="color:var(--accent);min-width:62px;">${fmt(it.seg)}</span>
+    <span style="color:var(--muted);font-size:10px;min-width:88px;">${it.horaInicio}→${it.horaFin}</span>
     ${it.etapa?`<span style="border:1px solid var(--border);padding:1px 5px;font-size:9px;color:var(--muted);">${it.etapa}</span>`:''}
     <span style="flex:1;font-size:11px;">${it.nota||'—'}</span>
-    <span style="color:var(--muted);font-size:10px;">${it.inicio.toTimeString().slice(0,5)}</span>
   </div>`).join('');
+}
+function restaurarPausasActivas(){
+  ['p1','p2','p3','p4'].forEach(ctx=>{
+    const raw=localStorage.getItem('pausa_activa_'+ctx);
+    if(!raw)return;
+    try{
+      const d=JSON.parse(raw);
+      const p=pausaCtx[ctx];
+      p.actual={horaInicio:new Date(d.horaInicioISO),horaInicioStr:d.horaInicioStr};
+      const btn=document.getElementById('btn-pausa-'+ctx);
+      const liveEl=document.getElementById('pausa-live-'+ctx);
+      if(btn){btn.classList.add('on');btn.textContent='▶ Reanudar';}
+      if(liveEl){liveEl.style.display='block';liveEl.innerHTML='⏸ EN PAUSA desde <strong>'+d.horaInicioStr+'</strong>';}
+    }catch(e){}
+  });
 }
 
 // ═══ FINALIZAR ═══
@@ -1021,7 +1097,9 @@ function fmt(s){return `${Math.floor(s/3600).toString().padStart(2,'0')}:${Math.
 initTipoSelector();
 renderTipos();
 renderReconteos();
+renderTiposProgreso();
 cargarLS();
+restaurarPausasActivas();
 </script>
 </body>
 </html>
