@@ -187,6 +187,20 @@ textarea:focus{outline:none;border-color:var(--accent);}
 /* PERSISTENCIA badge */
 .persist-badge{display:inline-flex;align-items:center;gap:4px;font-size:10px;color:var(--green);letter-spacing:1px;padding:2px 8px;border:1px solid var(--green);margin-left:8px;opacity:.7;}
 
+/* BORDES AMARILLO/GRIS */
+.bordes-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:10px;margin-bottom:8px;}
+.borde-input{background:#0a0a0a;border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:16px;padding:5px 6px;width:100%;text-align:center;margin-top:3px;}
+.borde-input:focus{outline:none;border-color:var(--accent);}
+.borde-total-val{font-size:22px;line-height:1;padding:5px 0;text-align:center;margin-top:3px;}
+
+/* TIPO CARD INFORMATIVO */
+.tipo-card-info{border:1px solid var(--border);padding:10px;background:#0c0c0c;}
+.tipo-info-vals{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;text-align:center;margin-top:6px;}
+.tipo-info-label{font-size:9px;color:var(--muted);letter-spacing:1px;margin-bottom:2px;}
+.tipo-info-num-a{font-size:16px;color:#f5c842;}
+.tipo-info-num-g{font-size:16px;color:#aaaaaa;}
+.tipo-info-num-t{font-size:16px;color:var(--text);}
+
 /* LISTA PROGRESO TIPOS */
 .tipos-progreso{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:6px;margin-bottom:14px;}
 .tipo-prog-item{display:flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid var(--border);background:#0c0c0c;cursor:pointer;transition:all .2s;}
@@ -311,6 +325,20 @@ textarea:focus{outline:none;border-color:var(--accent);}
         <div class="manual-grid">
           <div><div class="field-label">Inicio</div><input type="time" id="ctc-min"/></div>
           <div><div class="field-label">Fin</div><input type="time" id="ctc-mfin"/></div>
+        </div>
+        <div class="bordes-row">
+          <div>
+            <div class="field-label" style="color:#f5c842;">Borde Amarillo</div>
+            <input type="number" class="borde-input" id="ctc-bordeA" min="0" placeholder="0" oninput="calcBordeTotal()"/>
+          </div>
+          <div>
+            <div class="field-label" style="color:#aaaaaa;">Borde Gris</div>
+            <input type="number" class="borde-input" id="ctc-bordeG" min="0" placeholder="0" oninput="calcBordeTotal()"/>
+          </div>
+          <div>
+            <div class="field-label">Total</div>
+            <div class="borde-total-val" id="ctc-bordeTotal">0</div>
+          </div>
         </div>
         <button class="btn success" id="btn-guardar-tipo" onclick="guardarConteotipo()">Guardar conteo</button>
       </div>
@@ -520,7 +548,7 @@ const TIPOS=[
   {id:'incoloro',label:'Incoloro',color:'#aaaaaa'},
   {id:'agua',label:'Agua',color:'#4ea8d8'},
   {id:'lucha',label:'Lucha',color:'#c0603a'},
-  {id:'hierba',label:'Hierba',color:'#5baa5b'},
+  {id:'hierba',label:'Pasto',color:'#5baa5b'},
   {id:'psiquico',label:'Psíquico',color:'#c17fc8'},
 ];
 const MOTIVOS_RECONTEO=['Carta pegada','Carta foil/reverse','Carta otro tipo','Cansancio','Distracción','Otro'];
@@ -539,7 +567,7 @@ let cronos={};
 
 // Conteo por tipo con crono
 let conteoTipos={}; // id -> {seg,iv,estado,horaInicio,horaFin,esManual}
-TIPOS.forEach(t=>{conteoTipos[t.id]={seg:0,iv:null,estado:'pendiente',horaInicio:null,horaFin:null,esManual:false};});
+TIPOS.forEach(t=>{conteoTipos[t.id]={seg:0,iv:null,estado:'pendiente',horaInicio:null,horaFin:null,esManual:false,bordeA:0,bordeG:0,total:0};});
 let tipoActivoConteo=null;
 
 // Cantidades
@@ -676,6 +704,12 @@ function initTipoSelector(){
   });
 }
 
+function calcBordeTotal(){
+  const A=parseInt(document.getElementById('ctc-bordeA').value)||0;
+  const G=parseInt(document.getElementById('ctc-bordeG').value)||0;
+  document.getElementById('ctc-bordeTotal').textContent=A+G;
+}
+
 function cambiarTipoActivo(){
   const id=document.getElementById('tipo-selector').value;
   if(!id){document.getElementById('card-tipo-activo').style.display='none';return;}
@@ -697,6 +731,13 @@ function cambiarTipoActivo(){
   btn.className='btn '+(s.estado==='activa'?'danger':s.estado==='pendiente'?'primary':'');
   const btnG=document.getElementById('btn-guardar-tipo');
   if(btnG)btnG.textContent='Guardar conteo '+t.label;
+  // populate borde fields with saved values
+  const ba=document.getElementById('ctc-bordeA');
+  const bg=document.getElementById('ctc-bordeG');
+  const bt=document.getElementById('ctc-bordeTotal');
+  if(ba)ba.value=s.bordeA||'';
+  if(bg)bg.value=s.bordeG||'';
+  if(bt)bt.textContent=(s.bordeA||0)+(s.bordeG||0);
   renderTiposProgreso();
 }
 
@@ -732,13 +773,23 @@ function guardarConteotipo(){
   } else if(s.estado!=='activa'&&s.seg===0){
     alert('Ingresa hora inicio y fin, o usa el cronómetro.');return;
   }
+  // save bordes
+  const bordeA=parseInt(document.getElementById('ctc-bordeA').value)||0;
+  const bordeG=parseInt(document.getElementById('ctc-bordeG').value)||0;
+  const total=bordeA+bordeG;
+  s.bordeA=bordeA; s.bordeG=bordeG; s.total=total;
+  // update conteo[] with total so copiarConteo and total bar are correct
+  if(total>0) conteo[id]=total;
   s.estado='terminado';
   clearInterval(s.iv);
-  guardarLS();renderSavedTipos();initTipoSelector();
+  updTotal();
+  guardarLS();renderSavedTipos();initTipoSelector();renderTipos();
   cambiarTipoActivo();
   renderTiposProgreso();
   document.getElementById('ctc-min').value='';
-  document.getElementById('ctc-mfin').value='';
+  document.getElementById('ctc-bordeA').value='';
+  document.getElementById('ctc-bordeG').value='';
+  document.getElementById('ctc-bordeTotal').textContent='0';
 }
 
 function renderSavedTipos(){
@@ -756,7 +807,9 @@ function renderSavedTipos(){
         <span class="st-nombre">${t.label}</span>
         <span class="st-tiempo">${fmt(s.seg)}</span>
         <span class="st-horas">${hi}→${hf}</span>
-        <span class="st-total">${conteo[t.id]} cartas</span>
+        <span style="color:#f5c842;font-size:11px;">A:${s.bordeA||0}</span>
+        <span style="color:#aaaaaa;font-size:11px;">G:${s.bordeG||0}</span>
+        <span style="color:var(--text);font-size:11px;">T:${s.total||conteo[t.id]||0}</span>
       </div>`;
     }).join('');
 }
@@ -792,20 +845,29 @@ function renderTipos(){
   const sorted=[...TIPOS].sort((a,b)=>conteo[a.id]-conteo[b.id]);
   const c=document.getElementById('tipos-container');c.innerHTML='';
   sorted.forEach((t,idx)=>{
-    const d=document.createElement('div');d.className='tipo-card';
-    d.innerHTML=`<div class="tipo-header"><div class="tipo-dot" style="background:${t.color}"></div><div class="tipo-nombre">${t.label}</div></div>
-    <div class="tipo-controls">
-      <div class="tipo-count" id="cnt-${t.id}">${conteo[t.id]}</div>
-      <div class="tipo-btns"><button class="btn-sm" onclick="addT('${t.id}',1)">+</button><button class="btn-sm" onclick="addT('${t.id}',-1)">−</button></div>
-      <input type="number" class="tipo-input-direct" id="inp-${t.id}" value="${conteo[t.id]}" min="0" onchange="setT('${t.id}',this.value)"/>
-    </div>
-    <div class="tipo-rank">${conteo[t.id]>0?'#'+(idx+1)+' menor':''}</div>`;
+    const ct=conteoTipos[t.id];
+    const A=ct.bordeA||0;
+    const G=ct.bordeG||0;
+    const T=ct.total||conteo[t.id]||0;
+    const d=document.createElement('div');d.className='tipo-card-info';
+    d.innerHTML=`
+      <div class="tipo-header">
+        <div class="tipo-dot" style="background:${t.color}"></div>
+        <div class="tipo-nombre">${t.label}</div>
+        ${T>0?'<span style="font-size:10px;color:var(--muted);margin-left:auto;">#'+(idx+1)+'</span>':''}
+      </div>
+      <div class="tipo-info-vals">
+        <div><div class="tipo-info-label" style="color:#f5c842;">AMARILLO</div><div class="tipo-info-num-a">${A||'—'}</div></div>
+        <div><div class="tipo-info-label" style="color:#aaaaaa;">GRIS</div><div class="tipo-info-num-g">${G||'—'}</div></div>
+        <div><div class="tipo-info-label">TOTAL</div><div class="tipo-info-num-t">${T||'—'}</div></div>
+      </div>`;
     c.appendChild(d);
   });
 }
-function addT(id,d){conteo[id]=Math.max(0,conteo[id]+d);updTotal();renderTipos();guardarLS();}
-function setT(id,v){conteo[id]=Math.max(0,parseInt(v)||0);updTotal();renderTipos();guardarLS();}
-function updTotal(){document.getElementById('total-cartas').textContent=Object.values(conteo).reduce((a,b)=>a+b,0);}
+function updTotal(){
+  const total=Object.values(conteo).reduce((a,b)=>a+b,0);
+  document.getElementById('total-cartas').textContent=total;
+}
 function copiarConteo(){
   const sorted=[...TIPOS].sort((a,b)=>conteo[a.id]-conteo[b.id]);
   const total=Object.values(conteo).reduce((a,b)=>a+b,0);
@@ -1031,7 +1093,7 @@ function finalizarFase(phase){
       config:{tipoPack:document.getElementById('tipo-pack').value,condicionEspacio:document.getElementById('cond-espacio').value},
       cronos:{preparacion:{seg:cronos.preparacion.seg,fmt:fmt(cronos.preparacion.seg),horaInicio:cronos.preparacion.horaInicio,horaFin:cronos.preparacion.horaFin,esManual:cronos.preparacion.esManual},
         conteoGlobal:{seg:cronos['conteo-global'].seg,fmt:fmt(cronos['conteo-global'].seg),horaInicio:cronos['conteo-global'].horaInicio,horaFin:cronos['conteo-global'].horaFin,esManual:cronos['conteo-global'].esManual}},
-      tiemposPorTipo:TIPOS.map(t=>({tipo:t.label,seg:conteoTipos[t.id].seg,fmt:fmt(conteoTipos[t.id].seg),horaInicio:conteoTipos[t.id].horaInicio,horaFin:conteoTipos[t.id].horaFin,esManual:conteoTipos[t.id].esManual})),
+      tiemposPorTipo:TIPOS.map(t=>({tipo:t.label,seg:conteoTipos[t.id].seg,fmt:fmt(conteoTipos[t.id].seg),horaInicio:conteoTipos[t.id].horaInicio,horaFin:conteoTipos[t.id].horaFin,esManual:conteoTipos[t.id].esManual,bordeAmarillo:conteoTipos[t.id].bordeA||0,bordeGris:conteoTipos[t.id].bordeG||0,total:conteoTipos[t.id].total||0})),
       conteo:{...Object.fromEntries(TIPOS.map(t=>[t.id,conteo[t.id]])),TOTAL:total},
       conteoOrdenado:sorted.map(t=>({tipo:t.label,cantidad:conteo[t.id]})),
       reconteos:reconteos.map(r=>({idx:r.idx,motivo:r.motivo,hora:r.hora})),
