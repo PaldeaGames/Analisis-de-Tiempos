@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PackTracker Pokémon</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700;900&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0f0f0f;--panel:#171717;--border:#2a2a2a;--accent:#f5c842;--accent2:#e05c2a;--text:#e8e8e0;--muted:#666;--green:#4caf6e;--red:#e05c2a;--mono:'Share Tech Mono',monospace;--display:'Barlow Condensed',sans-serif;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:var(--mono);min-height:100vh;padding:16px;font-size:13px;}
+.app{max-width:860px;margin:0 auto;}
+header{border:1px solid var(--border);border-bottom:3px solid var(--accent);padding:14px 20px 12px;margin-bottom:16px;background:var(--panel);display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:8px;}
+.logo{font-family:var(--display);font-weight:900;font-size:28px;letter-spacing:2px;text-transform:uppercase;color:var(--accent);}
+.logo span{color:var(--accent2);}
+.session-meta{color:var(--muted);font-size:11px;margin-top:4px;}
+#live-clock{color:var(--accent);font-size:18px;}
+.progress-wrap{background:var(--panel);border:1px solid var(--border);padding:16px;margin-bottom:16px;}
+.progress-steps{display:grid;grid-template-columns:repeat(4,1fr);gap:0;margin-bottom:12px;}
+.step{text-align:center;padding:10px 4px;border:1px solid var(--border);border-right:none;background:#0f0f0f;cursor:pointer;transition:all .2s;}
+.step:last-child{border-right:1px solid var(--border);}
+.step.active{border-color:var(--accent);background:#1a1800;}
+.step.done{border-color:var(--green);background:#0d1a0d;}
+.step.locked{opacity:.4;cursor:not-allowed;}
+.step-num{font-family:var(--display);font-weight:900;font-size:22px;color:var(--muted);}
+.step.active .step-num{color:var(--accent);}
+.step.done .step-num{color:var(--green);}
+.step-label{font-family:var(--display);font-weight:700;font-size:11px;letter-spacing:2px;text-transform:uppercase;margin-top:2px;}
+.step-pct{font-size:10px;color:var(--muted);margin-top:3px;}
+.step.done .step-pct{color:var(--green);}
+.progress-bar-outer{height:6px;background:#1a1a1a;border:1px solid var(--border);}
+.progress-bar-inner{height:100%;background:var(--accent);transition:width .5s ease;}
+.phase-panel{display:none;}.phase-panel.active{display:block;}
+.panel{background:var(--panel);border:1px solid var(--border);padding:16px;margin-bottom:14px;}
+.section-title{font-family:var(--display);font-weight:700;font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);padding-bottom:6px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;}
+.field-label{font-size:10px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:5px;}
+.config-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;}
+select,input[type=text],input[type=number]{background:#0a0a0a;border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:12px;padding:6px 8px;width:100%;}
+select:focus,input:focus{outline:none;border-color:var(--accent);}
+textarea{width:100%;background:#0a0a0a;border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:12px;padding:10px;resize:vertical;min-height:70px;margin-top:6px;}
+textarea:focus{outline:none;border-color:var(--accent);}
+.btn{font-family:var(--mono);font-size:11px;padding:5px 10px;border:1px solid var(--border);background:transparent;color:var(--text);cursor:pointer;letter-spacing:1px;text-transform:uppercase;transition:all .15s;}
+.btn:hover{border-color:var(--accent);color:var(--accent);}
+.btn.primary{background:var(--accent);color:#000;border-color:var(--accent);font-weight:bold;}
+.btn.primary:hover{background:#ffd850;}
+.btn.danger{border-color:var(--red);color:var(--red);}
+.btn.danger:hover{background:var(--red);color:#fff;}
+.btn.success{border-color:var(--green);color:var(--green);}
+.btn.success:hover{background:var(--green);color:#000;}
+.btn-row{display:flex;gap:6px;flex-wrap:wrap;}
+.tipos-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:8px;}
+.tipo-card{border:1px solid var(--border);padding:10px;background:#0f0f0f;}
+.tipo-header{display:flex;align-items:center;gap:6px;margin-bottom:8px;}
+.tipo-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+.tipo-nombre{font-family:var(--display);font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:1px;}
+.tipo-controls{display:flex;align-items:center;gap:6px;}
+.tipo-count{font-size:30px;color:var(--accent);line-height:1;min-width:40px;text-align:center;}
+.tipo-btns{display:flex;flex-direction:column;gap:3px;}
+.btn-sm{font-family:var(--mono);font-size:16px;width:28px;height:24px;border:1px solid var(--border);background:transparent;color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;transition:all .1s;}
+.btn-sm:hover{border-color:var(--accent);color:var(--accent);}
+.tipo-input-direct{width:56px;font-size:13px;text-align:center;}
+.total-bar{display:flex;justify-content:space-between;align-items:center;border:1px solid var(--border);padding:10px 14px;background:#0a0a0a;margin-top:12px;}
+.total-label{font-size:11px;letter-spacing:3px;color:var(--muted);}
+.total-val{font-size:28px;color:var(--accent);}
+.armado-tipo-card{border:1px solid var(--border);padding:12px;background:#0f0f0f;margin-bottom:8px;transition:border-color .2s;}
+.armado-tipo-card.activo{border-color:var(--accent);}
+.armado-tipo-card.terminado{border-color:var(--green);opacity:.8;}
+.atc-header{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.atc-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0;}
+.atc-nombre{font-family:var(--display);font-weight:700;font-size:16px;text-transform:uppercase;letter-spacing:1px;}
+.atc-cantidad{color:var(--muted);font-size:12px;}
+.atc-body{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:start;}
+.atc-timer{font-size:32px;color:var(--accent);line-height:1;min-width:110px;}
+.atc-timer.running{animation:blink 1.2s infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.5}}
+.atc-estado{font-size:10px;letter-spacing:2px;color:var(--muted);margin-bottom:8px;}
+.incidencia-list{margin-top:8px;}
+.incidencia-item{display:flex;gap:8px;align-items:center;font-size:11px;padding:4px 8px;border:1px solid var(--border);background:#0a0a0a;margin-bottom:4px;}
+.inc-tipo-tag{font-size:9px;letter-spacing:1px;border:1px solid var(--border);padding:1px 5px;color:var(--muted);}
+.inc-nota{flex:1;color:var(--text);}
+.incidencia-form{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;}
+.incidencia-form select{width:130px;}
+.incidencia-form input{flex:1;min-width:120px;}
+.olvido-box{margin-top:10px;padding-top:8px;border-top:1px solid var(--border);}
+.olvido-label{font-size:10px;color:var(--muted);margin-bottom:8px;}
+
+/* ── TIME PICKER RUEDA ── */
+.tp-wrap{display:flex;align-items:flex-start;gap:2px;}
+.tp-col{display:flex;flex-direction:column;align-items:center;}
+.tp-sep{font-size:22px;color:var(--muted);padding:0 1px;margin-top:28px;}
+.tp-unit-label{font-size:9px;color:var(--muted);letter-spacing:1px;text-align:center;margin-bottom:4px;}
+.tp-drum{width:50px;height:90px;overflow:hidden;position:relative;border:1px solid var(--border);background:#060606;cursor:ns-resize;user-select:none;touch-action:none;}
+.tp-drum-inner{position:absolute;width:100%;}
+.tp-drum-item{height:30px;display:flex;align-items:center;justify-content:center;font-size:19px;color:#444;font-family:var(--mono);}
+.tp-drum-item.sel{color:var(--accent);}
+.tp-highlight{position:absolute;top:30px;left:0;right:0;height:30px;border-top:1px solid var(--accent);border-bottom:1px solid var(--accent);pointer-events:none;opacity:.35;}
+.tp-btn-apply{margin-top:8px;}
+
+.btn-pausa{font-family:var(--display);font-weight:700;font-size:14px;letter-spacing:2px;padding:7px 16px;border:2px solid var(--red);background:transparent;color:var(--red);cursor:pointer;text-transform:uppercase;transition:all .15s;}
+.btn-pausa:hover,.btn-pausa.on{background:var(--red);color:#fff;}
+.pausa-live{display:none;color:var(--red);font-size:12px;letter-spacing:1px;margin:8px 0;animation:blink 1.2s infinite;}
+.pausa-item{display:flex;gap:8px;align-items:center;padding:6px 10px;border:1px solid var(--border);background:#0a0a0a;margin-bottom:4px;font-size:11px;flex-wrap:wrap;}
+.pausa-etapa-tag{border:1px solid var(--border);padding:1px 6px;font-size:9px;color:var(--muted);letter-spacing:1px;}
+.pausa-config{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;}
+.error-main{display:flex;align-items:center;gap:16px;margin-bottom:10px;}
+.error-num{font-size:42px;color:var(--accent2);line-height:1;}
+.error-desc{color:var(--muted);font-size:10px;letter-spacing:2px;}
+.tecnica-check{display:flex;align-items:center;gap:8px;margin-top:8px;}
+.tecnica-check input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;}
+.tecnica-check label{font-size:11px;color:var(--muted);}
+.fin-wrap{text-align:center;padding:20px;}
+.fin-btn{font-family:var(--display);font-weight:900;font-size:18px;letter-spacing:4px;padding:14px 36px;border:2px solid var(--accent);background:transparent;color:var(--accent);cursor:pointer;text-transform:uppercase;transition:all .15s;}
+.fin-btn:hover{background:var(--accent);color:#000;}
+.fin-note{color:var(--muted);font-size:11px;margin-bottom:12px;letter-spacing:1px;}
+.resumen{display:none;border:2px solid var(--accent);padding:20px;background:#0f0f0f;margin-bottom:14px;}
+.resumen.on{display:block;}
+.resumen-title{font-family:var(--display);font-weight:900;font-size:24px;letter-spacing:3px;color:var(--accent);text-transform:uppercase;margin-bottom:16px;}
+.resumen-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:14px;}
+.resumen-field label{font-size:10px;color:var(--muted);letter-spacing:2px;display:block;margin-bottom:2px;}
+.resumen-field .v{font-size:16px;}
+.res-row{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);font-size:12px;}
+.export-box{background:#060606;border:1px solid var(--border);padding:10px;font-size:11px;line-height:1.7;white-space:pre-wrap;max-height:260px;overflow-y:auto;color:#999;margin-top:10px;}
+.divider{border:none;border-top:1px solid var(--border);margin:14px 0;}
+.tag-s{font-size:10px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:6px;display:block;}
+.copy-box{background:#0a0a0a;border:1px solid var(--border);padding:10px;font-size:12px;line-height:2;margin-top:10px;white-space:pre;color:#aaa;max-height:180px;overflow-y:auto;display:none;}
+.info-box{border:1px solid #2a2a2a;padding:12px 14px;background:#111;font-size:11px;color:var(--muted);line-height:1.9;margin-bottom:14px;}
+.info-box strong{color:var(--accent);}
+</style>
+</head>
+<body>
+<div class="app">
+
+<header>
+  <div>
+    <div class="logo">Pack<span>Tracker</span> <span style="color:var(--muted);font-size:14px;font-weight:400">// Pokémon</span></div>
+    <div class="session-meta" id="session-meta">—</div>
+  </div>
+  <div id="live-clock">--:--:--</div>
+</header>
+
+<div class="progress-wrap">
+  <div class="progress-steps" id="progress-steps">
+    <div class="step active" data-phase="0" onclick="goPhase(0)"><div class="step-num">01</div><div class="step-label">Prep + Conteo</div><div class="step-pct">25%</div></div>
+    <div class="step locked" data-phase="1" onclick="goPhase(1)"><div class="step-num">02</div><div class="step-label">Armado</div><div class="step-pct">50%</div></div>
+    <div class="step locked" data-phase="2" onclick="goPhase(2)"><div class="step-num">03</div><div class="step-label">Empaque</div><div class="step-pct">75%</div></div>
+    <div class="step locked" data-phase="3" onclick="goPhase(3)"><div class="step-num">04</div><div class="step-label">Etiquetado</div><div class="step-pct">100%</div></div>
+  </div>
+  <div class="progress-bar-outer"><div class="progress-bar-inner" id="prog-bar" style="width:0%"></div></div>
+</div>
+
+<!-- FASE 1 -->
+<div class="phase-panel active" id="phase-0">
+  <div class="info-box">ℹ️ <strong>Fase 1 de 4 — Preparación + Conteo.</strong> Una sola vez al inicio del lote. Al finalizar se desbloquea la fase de Armado.</div>
+  <div class="panel">
+    <div class="section-title">Configuración del Lote</div>
+    <div class="config-grid">
+      <div><div class="field-label">ID del Lote</div><input type="text" id="lote-id" placeholder="LOTE-20260520"/></div>
+      <div><div class="field-label">Tipo de pack</div><select id="tipo-pack"><option value="55">55 unidades</option><option value="20">20 unidades</option><option value="otro">Otro</option></select></div>
+      <div><div class="field-label">Destino</div><select id="destino"><option value="mercadolibre">Mercado Libre</option><option value="instagram">Instagram</option><option value="stock">Stock personal</option></select></div>
+      <div><div class="field-label">Condición del espacio</div><select id="cond-espacio"><option value="limpia">Mesa limpia</option><option value="semiordenada">Semi-ordenada</option><option value="desordenada">Desordenada</option></select></div>
+      <div><div class="field-label">Hora del día</div><select id="hora-dia-p1"><option value="manana">Mañana</option><option value="tarde">Tarde</option><option value="noche">Noche</option></select></div>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="section-title">Cronómetros</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div class="armado-tipo-card" id="etapa-card-preparacion">
+        <div class="atc-nombre" style="margin-bottom:8px;">Preparación Mesa</div>
+        <div class="atc-timer" id="timer-preparacion">00:00:00</div>
+        <div class="atc-estado" id="estado-preparacion">— PENDIENTE</div>
+        <div class="btn-row"><button class="btn primary" id="btn-preparacion" onclick="toggleEtapa('preparacion')">▶ Iniciar</button></div>
+        <div class="olvido-box">
+          <div class="olvido-label">¿Olvidaste iniciar? Usa las ruedas:</div>
+          <div id="tp-preparacion"></div>
+          <button class="btn tp-btn-apply" onclick="applyDrum('preparacion')">Guardar tiempo</button>
+        </div>
+      </div>
+      <div class="armado-tipo-card" id="etapa-card-conteo">
+        <div class="atc-nombre" style="margin-bottom:8px;">Conteo de Cartas</div>
+        <div class="atc-timer" id="timer-conteo">00:00:00</div>
+        <div class="atc-estado" id="estado-conteo">— PENDIENTE</div>
+        <div class="btn-row"><button class="btn primary" id="btn-conteo" onclick="toggleEtapa('conteo')">▶ Iniciar</button></div>
+        <div class="olvido-box">
+          <div class="olvido-label">¿Olvidaste iniciar? Usa las ruedas:</div>
+          <div id="tp-conteo"></div>
+          <button class="btn tp-btn-apply" onclick="applyDrum('conteo')">Guardar tiempo</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="section-title"><span>Conteo por Tipo de Energía</span><button class="btn success" onclick="copiarConteo()">Copiar conteo</button></div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:12px;">Ordenado de menor a mayor. El orden resultante será el orden de armado.</div>
+    <div class="tipos-grid" id="tipos-container"></div>
+    <div class="total-bar"><span class="total-label">TOTAL CARTAS EN LOTE</span><span class="total-val" id="total-cartas">0</span></div>
+    <div id="copy-conteo-box" class="copy-box"></div>
+  </div>
+  <div class="panel">
+    <div class="section-title">Errores &amp; Reconteos</div>
+    <div class="error-main">
+      <div><div class="error-desc">RECONTEOS</div><div class="error-num" id="errores-num">0</div></div>
+      <div class="btn-row"><button class="btn danger" onclick="addErr()">+ Reconteo</button><button class="btn" onclick="subErr()">− Quitar</button></div>
+    </div>
+    <div class="tecnica-check"><input type="checkbox" id="uso-tecnica"/><label for="uso-tecnica">Usé técnica de igualado por altura</label></div>
+    <textarea id="errores-nota" placeholder="Detalla qué pasó..."></textarea>
+  </div>
+  <div class="panel">
+    <div class="section-title"><span>Pausas</span><button class="btn-pausa" id="btn-pausa-p1" onclick="togglePausa('p1')">⏸ Pausa</button></div>
+    <div class="pausa-live" id="pausa-live-p1">● PAUSA — <span id="pausa-timer-p1">00:00</span></div>
+    <div class="pausa-config">
+      <div><div class="field-label">Momento</div><select id="pausa-etapa-p1"><option value="">— Sin especificar</option><option value="preparacion">Preparación Mesa</option><option value="conteo">Conteo</option></select></div>
+      <div><div class="field-label">Motivo</div><input type="text" id="pausa-nota-p1" placeholder="ej: cansancio..."/></div>
+    </div>
+    <div id="pausas-lista-p1" style="margin-top:10px;"><div style="color:var(--muted);font-size:11px;">Sin pausas.</div></div>
+  </div>
+  <div class="panel"><div class="section-title">Notas Generales</div><textarea id="notas-p1" placeholder="Observaciones..."></textarea></div>
+  <div class="fin-wrap">
+    <div class="fin-note">Al finalizar se genera el JSON y se desbloquea la fase de Armado.</div>
+    <button class="fin-btn" onclick="finalizarFase(0)">✓ Finalizar Prep + Conteo</button>
+  </div>
+  <div class="resumen" id="resumen-0">
+    <div class="resumen-title">▸ Sesión: Prep + Conteo</div>
+    <div class="resumen-grid" id="rg-0"></div>
+    <div class="divider"></div><span class="tag-s">Cartas por tipo (menor → mayor)</span>
+    <div id="rt-0"></div>
+    <div class="divider"></div><span class="tag-s">JSON</span>
+    <div class="export-box" id="eb-0"></div>
+    <div class="btn-row" style="margin-top:10px;">
+      <button class="btn primary" onclick="copiarJSON(0)">Copiar JSON</button>
+      <button class="btn success" onclick="descargarJSON(0)">⬇ Descargar .json</button>
+    </div>
+    <div class="divider"></div>
+    <button class="btn primary" style="font-size:14px;padding:10px 24px;" onclick="desbloquearSiguiente(0)">Continuar → Fase de Armado</button>
+  </div>
+</div>
+
+<!-- FASE 2 -->
+<div class="phase-panel" id="phase-1">
+  <div class="info-box">ℹ️ <strong>Fase 2 de 4 — Armado.</strong> Repite esta sesión cada día. Cada tipo tiene su cronómetro. Al terminar el día, finaliza y descarga el JSON. Cuando completes todos los tipos, pasa a Empaque.</div>
+  <div class="panel">
+    <div class="section-title">Sesión de Armado</div>
+    <div class="config-grid">
+      <div><div class="field-label">N° de sesión de armado</div><input type="number" id="armado-sesion-num" value="1" min="1"/></div>
+      <div><div class="field-label">Hora del día</div><select id="hora-dia-p2"><option value="manana">Mañana</option><option value="tarde">Tarde</option><option value="noche">Noche</option></select></div>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="section-title">Armado por Tipo de Energía <span style="font-size:10px;color:var(--muted);">menor → mayor</span></div>
+    <div id="armado-tipos-container"></div>
+  </div>
+  <div class="panel">
+    <div class="section-title"><span>Pausas &amp; Fatiga</span><button class="btn-pausa" id="btn-pausa-p2" onclick="togglePausa('p2')">⏸ Pausa</button></div>
+    <div class="pausa-live" id="pausa-live-p2">● PAUSA — <span id="pausa-timer-p2">00:00</span></div>
+    <div class="pausa-config">
+      <div><div class="field-label">Tipo de energía</div><select id="pausa-etapa-p2"><option value="">— Sin especificar</option></select></div>
+      <div><div class="field-label">Motivo</div><input type="text" id="pausa-nota-p2" placeholder="ej: dolor de espalda..."/></div>
+    </div>
+    <div id="pausas-lista-p2" style="margin-top:10px;"><div style="color:var(--muted);font-size:11px;">Sin pausas.</div></div>
+  </div>
+  <div class="panel"><div class="section-title">Notas de esta sesión</div><textarea id="notas-p2" placeholder="Observaciones del día..."></textarea></div>
+  <div class="fin-wrap">
+    <div class="fin-note">Finaliza al terminar el día o al completar todos los tipos.</div>
+    <button class="fin-btn" onclick="finalizarFase(1)">✓ Finalizar Sesión de Armado</button>
+  </div>
+  <div class="resumen" id="resumen-1">
+    <div class="resumen-title">▸ Sesión: Armado</div>
+    <div class="resumen-grid" id="rg-1"></div>
+    <div class="divider"></div><span class="tag-s">Tiempo por tipo</span><div id="rt-1"></div>
+    <div class="divider"></div><span class="tag-s">Pausas</span><div id="rp-1"></div>
+    <div class="divider"></div><span class="tag-s">JSON</span>
+    <div class="export-box" id="eb-1"></div>
+    <div class="btn-row" style="margin-top:10px;">
+      <button class="btn primary" onclick="copiarJSON(1)">Copiar JSON</button>
+      <button class="btn success" onclick="descargarJSON(1)">⬇ Descargar .json</button>
+    </div>
+    <div class="divider"></div>
+    <div class="btn-row">
+      <button class="btn" onclick="otraSesionArmado()">+ Nueva sesión de armado (mañana)</button>
+      <button class="btn primary" style="font-size:13px;padding:10px 20px;" onclick="desbloquearSiguiente(1)">Continuar → Empaque</button>
+    </div>
+  </div>
+</div>
+
+<!-- FASE 3 -->
+<div class="phase-panel" id="phase-2">
+  <div class="info-box">ℹ️ <strong>Fase 3 de 4 — Empaque.</strong></div>
+  <div class="panel">
+    <div class="section-title">Cronómetro de Empaque</div>
+    <div class="armado-tipo-card" style="max-width:320px;">
+      <div class="atc-nombre" style="margin-bottom:8px;">Empaque</div>
+      <div class="atc-timer" id="timer-empaque">00:00:00</div>
+      <div class="atc-estado" id="estado-empaque">— PENDIENTE</div>
+      <div class="btn-row"><button class="btn primary" id="btn-empaque" onclick="toggleEtapa('empaque')">▶ Iniciar</button></div>
+      <div class="olvido-box">
+        <div class="olvido-label">¿Olvidaste iniciar? Usa las ruedas:</div>
+        <div id="tp-empaque"></div>
+        <button class="btn tp-btn-apply" onclick="applyDrum('empaque')">Guardar tiempo</button>
+      </div>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="section-title"><span>Pausas</span><button class="btn-pausa" id="btn-pausa-p3" onclick="togglePausa('p3')">⏸ Pausa</button></div>
+    <div class="pausa-live" id="pausa-live-p3">● PAUSA — <span id="pausa-timer-p3">00:00</span></div>
+    <div style="margin-top:8px;"><div class="field-label">Motivo</div><input type="text" id="pausa-nota-p3" placeholder="ej: cansancio..."/></div>
+    <div id="pausas-lista-p3" style="margin-top:10px;"><div style="color:var(--muted);font-size:11px;">Sin pausas.</div></div>
+  </div>
+  <div class="panel"><div class="section-title">Notas</div><textarea id="notas-p3" placeholder="Observaciones..."></textarea></div>
+  <div class="fin-wrap">
+    <div class="fin-note">Al finalizar se desbloquea Etiquetado.</div>
+    <button class="fin-btn" onclick="finalizarFase(2)">✓ Finalizar Empaque</button>
+  </div>
+  <div class="resumen" id="resumen-2">
+    <div class="resumen-title">▸ Sesión: Empaque</div>
+    <div class="resumen-grid" id="rg-2"></div>
+    <div class="divider"></div><span class="tag-s">JSON</span>
+    <div class="export-box" id="eb-2"></div>
+    <div class="btn-row" style="margin-top:10px;">
+      <button class="btn primary" onclick="copiarJSON(2)">Copiar JSON</button>
+      <button class="btn success" onclick="descargarJSON(2)">⬇ Descargar .json</button>
+    </div>
+    <div class="divider"></div>
+    <button class="btn primary" style="font-size:13px;padding:10px 20px;" onclick="desbloquearSiguiente(2)">Continuar → Etiquetado</button>
+  </div>
+</div>
+
+<!-- FASE 4 -->
+<div class="phase-panel" id="phase-3">
+  <div class="info-box">ℹ️ <strong>Fase 4 de 4 — Etiquetado.</strong> Última etapa. Al finalizar el lote estará al 100%.</div>
+  <div class="panel">
+    <div class="section-title">Cronómetro de Etiquetado</div>
+    <div class="armado-tipo-card" style="max-width:320px;">
+      <div class="atc-nombre" style="margin-bottom:8px;">Etiquetado</div>
+      <div class="atc-timer" id="timer-etiquetado">00:00:00</div>
+      <div class="atc-estado" id="estado-etiquetado">— PENDIENTE</div>
+      <div class="btn-row"><button class="btn primary" id="btn-etiquetado" onclick="toggleEtapa('etiquetado')">▶ Iniciar</button></div>
+      <div class="olvido-box">
+        <div class="olvido-label">¿Olvidaste iniciar? Usa las ruedas:</div>
+        <div id="tp-etiquetado"></div>
+        <button class="btn tp-btn-apply" onclick="applyDrum('etiquetado')">Guardar tiempo</button>
+      </div>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="section-title"><span>Pausas</span><button class="btn-pausa" id="btn-pausa-p4" onclick="togglePausa('p4')">⏸ Pausa</button></div>
+    <div class="pausa-live" id="pausa-live-p4">● PAUSA — <span id="pausa-timer-p4">00:00</span></div>
+    <div style="margin-top:8px;"><div class="field-label">Motivo</div><input type="text" id="pausa-nota-p4" placeholder="ej: descanso..."/></div>
+    <div id="pausas-lista-p4" style="margin-top:10px;"><div style="color:var(--muted);font-size:11px;">Sin pausas.</div></div>
+  </div>
+  <div class="panel"><div class="section-title">Notas Finales del Lote</div><textarea id="notas-p4" placeholder="Reflexiones finales..."></textarea></div>
+  <div class="fin-wrap">
+    <div class="fin-note">Al finalizar se completa el lote al 100%.</div>
+    <button class="fin-btn" onclick="finalizarFase(3)">✓ Finalizar Lote Completo</button>
+  </div>
+  <div class="resumen" id="resumen-3">
+    <div class="resumen-title">▸ ¡Lote Completado al 100%!</div>
+    <div class="resumen-grid" id="rg-3"></div>
+    <div class="divider"></div><span class="tag-s">JSON</span>
+    <div class="export-box" id="eb-3"></div>
+    <div class="btn-row" style="margin-top:10px;">
+      <button class="btn primary" onclick="copiarJSON(3)">Copiar JSON</button>
+      <button class="btn success" onclick="descargarJSON(3)">⬇ Descargar .json</button>
+    </div>
+    <div class="divider"></div>
+    <button class="btn" onclick="location.reload()">Nuevo Lote</button>
+  </div>
+</div>
+
+</div>
+<script>
+// ═══ TIPOS ═══
+const TIPOS=[
+  {id:'psiquico',label:'Psíquico',color:'#c17fc8'},
+  {id:'hierba',label:'Hierba',color:'#5baa5b'},
+  {id:'agua',label:'Agua',color:'#4ea8d8'},
+  {id:'lucha',label:'Lucha',color:'#c0603a'},
+  {id:'incoloro',label:'Incoloro',color:'#aaaaaa'},
+  {id:'oscuro',label:'Oscuro',color:'#7070c0'},
+  {id:'fuego',label:'Fuego',color:'#e05c2a'},
+  {id:'metal',label:'Metal',color:'#8fa8b8'},
+  {id:'rayo',label:'Rayo',color:'#f5c842'},
+  {id:'dragon',label:'Dragón',color:'#7040c0'},
+];
+
+// ═══ TIME PICKER RUEDA ═══
+// drumState[id] = {h,m,s}
+const drumState={};
+
+function createDrum(containerId,id){
+  const container=document.getElementById(containerId);
+  if(!container)return;
+  drumState[id]={h:0,m:0,s:0};
+  container.innerHTML='';
+  const wrap=document.createElement('div');
+  wrap.className='tp-wrap';
+
+  const units=[
+    {key:'h',label:'HRS',max:23},
+    {key:'m',label:'MIN',max:59},
+    {key:'s',label:'SEG',max:59},
+  ];
+
+  units.forEach((u,i)=>{
+    if(i>0){
+      const sep=document.createElement('div');
+      sep.className='tp-sep'; sep.textContent=':';
+      wrap.appendChild(sep);
+    }
+    const col=document.createElement('div');
+    col.className='tp-col';
+    const lbl=document.createElement('div');
+    lbl.className='tp-unit-label'; lbl.textContent=u.label;
+    col.appendChild(lbl);
+
+    const drum=document.createElement('div');
+    drum.className='tp-drum';
+    drum.id='drum-'+id+'-'+u.key;
+
+    const inner=document.createElement('div');
+    inner.className='tp-drum-inner';
+    inner.id='inner-'+id+'-'+u.key;
+
+    // build items: blank + 0..max + blank
+    const allVals=[-1,...Array.from({length:u.max+1},(_,i)=>i),-1];
+    allVals.forEach(v=>{
+      const item=document.createElement('div');
+      item.className='tp-drum-item'+(v===0?' sel':'');
+      item.textContent=v<0?'':String(v).padStart(2,'0');
+      inner.appendChild(item);
+    });
+    // position: selected index=1 (value 0), offset so it's in center slot
+    inner.style.transform='translateY(0px)';
+    drum.appendChild(inner);
+
+    const hl=document.createElement('div');
+    hl.className='tp-highlight';
+    drum.appendChild(hl);
+
+    // drag
+    let startY=0,startOffset=0,dragging=false;
+    const getOffset=()=>{
+      const m=inner.style.transform.match(/translateY\(([^)]+)px\)/);
+      return m?parseFloat(m[1]):0;
+    };
+    const clampAndSnap=(raw)=>{
+      const itemH=30;
+      const minOff=-(u.max)*itemH;
+      const maxOff=0;
+      const clamped=Math.max(minOff,Math.min(maxOff,raw));
+      return Math.round(clamped/itemH)*itemH;
+    };
+    const updateSel=(offset)=>{
+      const idx=Math.round(-offset/30);
+      drumState[id][u.key]=idx;
+      inner.querySelectorAll('.tp-drum-item').forEach((el,i)=>{
+        el.classList.toggle('sel',i===idx+1);
+      });
+    };
+    const onMove=(clientY)=>{
+      if(!dragging)return;
+      const dy=clientY-startY;
+      const raw=startOffset+dy;
+      inner.style.transform=`translateY(${Math.max(-(u.max)*30,Math.min(0,raw))}px)`;
+    };
+    const onEnd=(clientY)=>{
+      if(!dragging)return;
+      dragging=false;
+      const dy=clientY-startY;
+      const raw=startOffset+dy;
+      const snapped=clampAndSnap(raw);
+      inner.style.transform=`translateY(${snapped}px)`;
+      updateSel(snapped);
+    };
+    drum.addEventListener('mousedown',e=>{dragging=true;startY=e.clientY;startOffset=getOffset();e.preventDefault();});
+    window.addEventListener('mousemove',e=>{if(dragging)onMove(e.clientY);});
+    window.addEventListener('mouseup',e=>{onEnd(e.clientY);});
+    drum.addEventListener('touchstart',e=>{dragging=true;startY=e.touches[0].clientY;startOffset=getOffset();},{passive:true});
+    drum.addEventListener('touchmove',e=>{onMove(e.touches[0].clientY);e.preventDefault();},{passive:false});
+    drum.addEventListener('touchend',e=>{onEnd(e.changedTouches[0].clientY);});
+    // scroll wheel
+    drum.addEventListener('wheel',e=>{
+      e.preventDefault();
+      const cur=getOffset();
+      const delta=e.deltaY>0?-30:30;
+      const snapped=clampAndSnap(cur+delta);
+      inner.style.transform=`translateY(${snapped}px)`;
+      updateSel(snapped);
+    },{passive:false});
+
+    col.appendChild(drum);
+    wrap.appendChild(col);
+  });
+  container.appendChild(wrap);
+}
+
+function applyDrum(id){
+  const st=drumState[id]||{h:0,m:0,s:0};
+  const seg=st.h*3600+st.m*60+st.s;
+  if(seg===0){alert('Selecciona un tiempo mayor a cero.');return;}
+  const s=simpleTimers[id];
+  if(s){
+    clearInterval(s.iv);
+    s.seg=seg; s.estado='terminada';
+    s.inicio=s.inicio||new Date(); s.fin=new Date();
+    document.getElementById('timer-'+id).textContent=fmt(seg);
+    document.getElementById('estado-'+id).textContent='✓ TERMINADA';
+    const btn=document.getElementById('btn-'+id);
+    if(btn){btn.textContent='↺ Reiniciar';btn.className='btn';}
+  } else if(armadoTipos[id]!==undefined){
+    const at=armadoTipos[id];
+    clearInterval(at.iv);
+    at.seg=seg; at.estado='terminada';
+    at.inicio=at.inicio||new Date(); at.fin=new Date();
+    renderArmado();
+  }
+}
+
+// armado drum per tipo id
+function applyDrumArmado(id){
+  const st=drumState['arm-'+id]||{h:0,m:0,s:0};
+  const seg=st.h*3600+st.m*60+st.s;
+  if(seg===0){alert('Selecciona un tiempo mayor a cero.');return;}
+  const at=armadoTipos[id];
+  if(at){
+    clearInterval(at.iv);
+    at.seg=seg; at.estado='terminada';
+    at.inicio=at.inicio||new Date(); at.fin=new Date();
+    renderArmado();
+  }
+}
+
+// ═══ ESTADO ═══
+const sesId='SES-'+Date.now().toString(36).toUpperCase();
+const loteId=()=>document.getElementById('lote-id').value||'LOTE-'+new Date().toISOString().slice(0,10);
+let currentPhase=0;
+let phaseDone=[false,false,false,false];
+let jsonExports=[null,null,null,null];
+let conteo={};TIPOS.forEach(t=>conteo[t.id]=0);
+let errores=0;
+let simpleTimers={};
+['preparacion','conteo','empaque','etiquetado'].forEach(id=>{simpleTimers[id]={seg:0,iv:null,estado:'pendiente',inicio:null,fin:null};});
+let armadoTipos={};
+let armadoSesionNum=1;
+let pausaCtx={};
+['p1','p2','p3','p4'].forEach(p=>{pausaCtx[p]={actual:null,iv:null,lista:[]};});
+let incidencias={};
+
+setInterval(()=>{document.getElementById('live-clock').textContent=new Date().toTimeString().slice(0,8);},1000);
+document.getElementById('session-meta').textContent=sesId+' · '+new Date().toLocaleDateString('es-CL');
+document.getElementById('lote-id').value='LOTE-'+new Date().toISOString().slice(0,10);
+
+// ═══ PHASE NAV ═══
+function goPhase(n){
+  if(n>0&&!phaseDone[n-1])return;
+  currentPhase=n;
+  document.querySelectorAll('.phase-panel').forEach((p,i)=>p.classList.toggle('active',i===n));
+  document.querySelectorAll('.step').forEach((s,i)=>{
+    s.classList.remove('active','done','locked');
+    if(i===n)s.classList.add('active');
+    else if(phaseDone[i])s.classList.add('done');
+    else s.classList.add('locked');
+  });
+  updateProgressBar();
+  window.scrollTo({top:0,behavior:'smooth'});
+  if(n===1)initArmado();
+}
+function updateProgressBar(){
+  document.getElementById('prog-bar').style.width=(phaseDone.filter(Boolean).length*25)+'%';
+}
+function desbloquearSiguiente(phase){
+  phaseDone[phase]=true;
+  if(phase<3)goPhase(phase+1);
+  updateProgressBar();
+}
+
+// ═══ CRONÓMETROS SIMPLES ═══
+function toggleEtapa(id){
+  const s=simpleTimers[id];
+  const btn=document.getElementById('btn-'+id);
+  if(s.estado==='pendiente'||s.estado==='terminada'){
+    if(!s.inicio)s.inicio=new Date();
+    s.estado='activa';
+    if(btn){btn.textContent='■ Terminar';btn.className='btn danger';}
+    document.getElementById('estado-'+id).textContent='● EN CURSO';
+    document.getElementById('timer-'+id).classList.add('running');
+    s.iv=setInterval(()=>{s.seg++;const el=document.getElementById('timer-'+id);if(el)el.textContent=fmt(s.seg);},1000);
+  } else if(s.estado==='activa'){
+    clearInterval(s.iv);s.fin=new Date();s.estado='terminada';
+    if(btn){btn.textContent='↺ Reiniciar';btn.className='btn';}
+    document.getElementById('estado-'+id).textContent='✓ TERMINADA';
+    document.getElementById('timer-'+id).classList.remove('running');
+  } else {
+    clearInterval(s.iv);
+    simpleTimers[id]={seg:0,iv:null,estado:'pendiente',inicio:null,fin:null};
+    if(btn){btn.textContent='▶ Iniciar';btn.className='btn primary';}
+    document.getElementById('timer-'+id).textContent='00:00:00';
+    document.getElementById('estado-'+id).textContent='— PENDIENTE';
+    document.getElementById('timer-'+id).classList.remove('running');
+  }
+}
+
+// ═══ CONTEO TIPOS ═══
+function renderTipos(){
+  const sorted=[...TIPOS].sort((a,b)=>conteo[a.id]-conteo[b.id]);
+  const c=document.getElementById('tipos-container');c.innerHTML='';
+  sorted.forEach((t,idx)=>{
+    const d=document.createElement('div');d.className='tipo-card';
+    d.innerHTML=`<div class="tipo-header"><div class="tipo-dot" style="background:${t.color}"></div><div class="tipo-nombre">${t.label}</div></div>
+    <div class="tipo-controls">
+      <div class="tipo-count" id="cnt-${t.id}">${conteo[t.id]}</div>
+      <div class="tipo-btns"><button class="btn-sm" onclick="addT('${t.id}',1)">+</button><button class="btn-sm" onclick="addT('${t.id}',-1)">−</button></div>
+      <input type="number" class="tipo-input-direct" id="inp-${t.id}" value="${conteo[t.id]}" min="0" onchange="setT('${t.id}',this.value)"/>
+    </div>
+    <div style="font-size:10px;color:var(--muted);margin-top:4px;">${conteo[t.id]>0?'#'+(idx+1)+' menor':''}</div>`;
+    c.appendChild(d);
+  });
+}
+function addT(id,d){conteo[id]=Math.max(0,conteo[id]+d);updTotal();renderTipos();}
+function setT(id,v){conteo[id]=Math.max(0,parseInt(v)||0);updTotal();renderTipos();}
+function updTotal(){document.getElementById('total-cartas').textContent=Object.values(conteo).reduce((a,b)=>a+b,0);}
+function copiarConteo(){
+  const sorted=[...TIPOS].sort((a,b)=>conteo[a.id]-conteo[b.id]);
+  const total=Object.values(conteo).reduce((a,b)=>a+b,0);
+  const txt=sorted.map(t=>`${t.label.padEnd(12)} ${conteo[t.id]}`).join('\n')+'\\n'+'─'.repeat(20)+'\\nTOTAL        '+total;
+  const box=document.getElementById('copy-conteo-box');box.textContent=txt;box.style.display='block';
+  navigator.clipboard.writeText(txt).then(()=>{
+    const btn=document.querySelector('button[onclick="copiarConteo()"]');
+    const o=btn.textContent;btn.textContent='✓ Copiado';setTimeout(()=>btn.textContent=o,1800);
+  });
+}
+function addErr(){errores++;document.getElementById('errores-num').textContent=errores;}
+function subErr(){errores=Math.max(0,errores-1);document.getElementById('errores-num').textContent=errores;}
+
+// ═══ ARMADO ═══
+function initArmado(){
+  const sorted=[...TIPOS].sort((a,b)=>conteo[a.id]-conteo[b.id]);
+  sorted.forEach(t=>{
+    if(!armadoTipos[t.id])armadoTipos[t.id]={seg:0,iv:null,estado:'pendiente',inicio:null,fin:null};
+    if(!incidencias[t.id])incidencias[t.id]=[];
+  });
+  const sel=document.getElementById('pausa-etapa-p2');
+  sel.innerHTML='<option value="">— Sin especificar</option>';
+  sorted.forEach(t=>{sel.innerHTML+=`<option value="${t.id}">${t.label}</option>`;});
+  renderArmado();
+}
+
+function renderArmado(){
+  const sorted=[...TIPOS].sort((a,b)=>conteo[a.id]-conteo[b.id]);
+  const c=document.getElementById('armado-tipos-container');c.innerHTML='';
+  sorted.forEach((t,idx)=>{
+    const s=armadoTipos[t.id]||{seg:0,estado:'pendiente'};
+    const inc=incidencias[t.id]||[];
+    const cls=s.estado==='activa'?'activo':s.estado==='terminada'?'terminado':'';
+    const estLabel={pendiente:'— PENDIENTE',activa:'● EN CURSO',terminada:'✓ TERMINADO'}[s.estado];
+    const btnLabel=s.estado==='pendiente'?'▶ Iniciar':s.estado==='activa'?'■ Terminar':'↺ Reiniciar';
+    const btnCls=s.estado==='pendiente'?'primary':s.estado==='activa'?'danger':'';
+    const d=document.createElement('div');
+    d.className='armado-tipo-card '+cls;
+    d.innerHTML=`
+      <div class="atc-header">
+        <div class="atc-dot" style="background:${t.color}"></div>
+        <div class="atc-nombre">${t.label}</div>
+        <div class="atc-cantidad" style="margin-left:auto;">${conteo[t.id]} cartas · #${idx+1}</div>
+      </div>
+      <div class="atc-body">
+        <div>
+          <div class="atc-timer ${s.estado==='activa'?'running':''}" id="atimer-${t.id}">${fmt(s.seg)}</div>
+          <div class="atc-estado">${estLabel}</div>
+          <div class="btn-row"><button class="btn ${btnCls}" onclick="toggleArmadoTipo('${t.id}')">${btnLabel}</button></div>
+          <div class="olvido-box">
+            <div class="olvido-label">¿Olvidaste iniciar? Usa las ruedas:</div>
+            <div id="tp-arm-${t.id}"></div>
+            <button class="btn tp-btn-apply" onclick="applyDrumArmado('${t.id}')">Guardar tiempo</button>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--muted);margin-bottom:6px;letter-spacing:1px;">INCIDENCIAS</div>
+          <div class="incidencia-list">${inc.length?inc.map(i=>`<div class="incidencia-item"><span class="inc-tipo-tag">${i.tipo}</span><span class="inc-nota">${i.nota}</span></div>`).join(''):'<div style="color:var(--muted);font-size:11px;">Sin incidencias.</div>'}</div>
+          <div class="incidencia-form">
+            <select id="inc-tipo-${t.id}"><option value="carta_faltante">Carta faltante</option><option value="error_armado">Error de armado</option><option value="ritmo_bajo">Ritmo bajo</option><option value="otro">Otro</option></select>
+            <input type="text" id="inc-nota-${t.id}" placeholder="Nota..."/>
+            <button class="btn" onclick="addIncidencia('${t.id}')">+ Agregar</button>
+          </div>
+        </div>
+      </div>`;
+    c.appendChild(d);
+    // crear drum para este tipo
+    createDrum('tp-arm-'+t.id,'arm-'+t.id);
+  });
+}
+
+function toggleArmadoTipo(id){
+  const s=armadoTipos[id];
+  if(s.estado==='pendiente'){s.inicio=new Date();s.estado='activa';s.iv=setInterval(()=>{s.seg++;const el=document.getElementById('atimer-'+id);if(el)el.textContent=fmt(s.seg);},1000);}
+  else if(s.estado==='activa'){clearInterval(s.iv);s.fin=new Date();s.estado='terminada';}
+  else{clearInterval(s.iv);armadoTipos[id]={seg:0,iv:null,estado:'pendiente',inicio:null,fin:null};}
+  renderArmado();
+}
+
+function addIncidencia(id){
+  const tipo=document.getElementById('inc-tipo-'+id).value;
+  const nota=document.getElementById('inc-nota-'+id).value.trim()||'—';
+  if(!incidencias[id])incidencias[id]=[];
+  incidencias[id].push({tipo,nota});
+  document.getElementById('inc-nota-'+id).value='';
+  renderArmado();
+}
+
+function otraSesionArmado(){
+  armadoSesionNum++;
+  document.getElementById('armado-sesion-num').value=armadoSesionNum;
+  document.getElementById('resumen-1').classList.remove('on');
+  pausaCtx['p2']={actual:null,iv:null,lista:[]};
+  renderPausas('p2');
+  document.getElementById('notas-p2').value='';
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+// ═══ PAUSAS ═══
+function togglePausa(ctx){
+  const p=pausaCtx[ctx];
+  const liveEl=document.getElementById('pausa-live-'+ctx);
+  const btn=document.getElementById('btn-pausa-'+ctx);
+  const notaEl=document.getElementById('pausa-nota-'+ctx);
+  const etapaEl=document.getElementById('pausa-etapa-'+ctx);
+  if(!p.actual){
+    p.actual={inicio:new Date(),seg:0};
+    liveEl.style.display='block';btn.classList.add('on');btn.textContent='▶ Reanudar';
+    p.iv=setInterval(()=>{p.actual.seg++;document.getElementById('pausa-timer-'+ctx).textContent=fmt(p.actual.seg);},1000);
+  } else {
+    clearInterval(p.iv);p.actual.fin=new Date();
+    p.actual.nota=notaEl?notaEl.value:'';
+    p.actual.etapa=etapaEl?etapaEl.value:'';
+    p.lista.push({...p.actual});p.actual=null;
+    liveEl.style.display='none';btn.classList.remove('on');btn.textContent='⏸ Pausa';
+    if(notaEl)notaEl.value='';
+    renderPausas(ctx);
+  }
+}
+function renderPausas(ctx){
+  const c=document.getElementById('pausas-lista-'+ctx);
+  const p=pausaCtx[ctx];
+  if(!p.lista.length){c.innerHTML='<div style="color:var(--muted);font-size:11px;">Sin pausas.</div>';return;}
+  c.innerHTML=p.lista.map((it,i)=>`<div class="pausa-item"><span style="color:var(--muted);min-width:22px;">#${i+1}</span><span style="color:var(--accent);min-width:60px;">${fmt(it.seg)}</span>${it.etapa?`<span class="pausa-etapa-tag">${it.etapa}</span>`:''}<span style="flex:1;font-size:11px;">${it.nota||'—'}</span><span style="color:var(--muted);font-size:10px;">${it.inicio.toTimeString().slice(0,5)}</span></div>`).join('');
+}
+
+// ═══ FINALIZAR ═══
+function finalizarFase(phase){
+  ['p1','p2','p3','p4'].forEach(ctx=>{if(pausaCtx[ctx].actual)togglePausa(ctx);});
+  const lid=loteId();
+  let data={},grid=[];
+
+  if(phase===0){
+    ['preparacion','conteo'].forEach(id=>{if(simpleTimers[id].estado==='activa')toggleEtapa(id);});
+    const total=Object.values(conteo).reduce((a,b)=>a+b,0);
+    const sorted=[...TIPOS].sort((a,b)=>conteo[a.id]-conteo[b.id]);
+    const totP=pausaCtx.p1.lista.reduce((a,p)=>a+p.seg,0);
+    grid=[['Lote',lid],['Sesión',sesId],['Fecha',new Date().toLocaleDateString('es-CL')],
+      ['Pack',document.getElementById('tipo-pack').value+' unidades'],
+      ['Destino',document.getElementById('destino').options[document.getElementById('destino').selectedIndex].text],
+      ['Cond. espacio',document.getElementById('cond-espacio').options[document.getElementById('cond-espacio').selectedIndex].text],
+      ['Hora',document.getElementById('hora-dia-p1').options[document.getElementById('hora-dia-p1').selectedIndex].text],
+      ['Prep. mesa',fmt(simpleTimers.preparacion.seg)],['Conteo',fmt(simpleTimers.conteo.seg)],
+      ['Pausas ('+pausaCtx.p1.lista.length+')',fmt(totP)],['Total cartas',total],['Reconteos',errores]];
+    document.getElementById('rt-0').innerHTML=sorted.map(t=>`<div class="res-row"><span style="color:${t.color}">● ${t.label}</span><span>${conteo[t.id]}</span></div>`).join('')+
+      `<div class="res-row"><span style="color:var(--accent)">TOTAL</span><span style="color:var(--accent)">${total}</span></div>`;
+    data={fase:'preparacion_conteo',lote:lid,sesion:sesId,fecha:new Date().toISOString(),
+      config:{tipoPack:document.getElementById('tipo-pack').value,destino:document.getElementById('destino').value,condicionEspacio:document.getElementById('cond-espacio').value,horaDia:document.getElementById('hora-dia-p1').value},
+      tiempos:{preparacionSeg:simpleTimers.preparacion.seg,preparacionFmt:fmt(simpleTimers.preparacion.seg),conteoSeg:simpleTimers.conteo.seg,conteoFmt:fmt(simpleTimers.conteo.seg),pausasTotalSeg:totP,pausasTotalFmt:fmt(totP)},
+      conteo:{...Object.fromEntries(TIPOS.map(t=>[t.id,conteo[t.id]])),TOTAL:total},
+      conteoOrdenado:sorted.map(t=>({tipo:t.label,cantidad:conteo[t.id]})),
+      errores:{reconteos:errores,useTecnicaIgualado:document.getElementById('uso-tecnica').checked,nota:document.getElementById('errores-nota').value},
+      pausas:pausaCtx.p1.lista.map(p=>({etapa:p.etapa,durSeg:p.seg,durFmt:fmt(p.seg),nota:p.nota})),
+      notas:document.getElementById('notas-p1').value};
+
+  } else if(phase===1){
+    const sorted=[...TIPOS].sort((a,b)=>conteo[a.id]-conteo[b.id]);
+    const totP=pausaCtx.p2.lista.reduce((a,p)=>a+p.seg,0);
+    const totA=sorted.reduce((a,t)=>a+(armadoTipos[t.id]?armadoTipos[t.id].seg:0),0);
+    const ef=Math.max(0,totA-totP);
+    const sn=parseInt(document.getElementById('armado-sesion-num').value)||1;
+    grid=[['Lote',lid],['Sesión armado','#'+sn],['Fecha',new Date().toLocaleDateString('es-CL')],
+      ['Hora',document.getElementById('hora-dia-p2').options[document.getElementById('hora-dia-p2').selectedIndex].text],
+      ['Tiempo total',fmt(totA)],['Pausas',fmt(totP)],['Efectivo',fmt(ef)]];
+    document.getElementById('rt-1').innerHTML=sorted.map(t=>{
+      const seg=armadoTipos[t.id]?armadoTipos[t.id].seg:0;
+      const spc=conteo[t.id]>0&&seg>0?(seg/conteo[t.id]).toFixed(1)+'s/carta':'—';
+      return `<div class="res-row"><span style="color:${t.color}">● ${t.label} (${conteo[t.id]})</span><span>${fmt(seg)} · ${spc}</span></div>`;
+    }).join('');
+    document.getElementById('rp-1').innerHTML=pausaCtx.p2.lista.length
+      ?pausaCtx.p2.lista.map((p,i)=>`<div class="res-row"><span>#${i+1} ${p.etapa||'—'}</span><span>${fmt(p.seg)} — ${p.nota||'sin nota'}</span></div>`).join('')
+      :'<div style="color:var(--muted);font-size:11px;">Sin pausas.</div>';
+    data={fase:'armado',lote:lid,sesionArmadoNum:sn,fecha:new Date().toISOString(),
+      horaDia:document.getElementById('hora-dia-p2').value,
+      tiemposPorTipo:sorted.map(t=>({tipo:t.label,seg:armadoTipos[t.id]?armadoTipos[t.id].seg:0,fmt:fmt(armadoTipos[t.id]?armadoTipos[t.id].seg:0),cartas:conteo[t.id],segPorCarta:conteo[t.id]>0&&armadoTipos[t.id]&&armadoTipos[t.id].seg>0?+(armadoTipos[t.id].seg/conteo[t.id]).toFixed(1):null,estado:armadoTipos[t.id]?armadoTipos[t.id].estado:'pendiente'})),
+      resumenTiempos:{totalSeg:totA,totalFmt:fmt(totA),pausasSeg:totP,pausasFmt:fmt(totP),efectivoSeg:ef,efectivoFmt:fmt(ef)},
+      incidencias:sorted.reduce((a,t)=>{if((incidencias[t.id]||[]).length)a[t.label]=incidencias[t.id];return a;},{}),
+      pausas:pausaCtx.p2.lista.map(p=>({tipo:p.etapa,durSeg:p.seg,durFmt:fmt(p.seg),nota:p.nota})),
+      notas:document.getElementById('notas-p2').value};
+
+  } else if(phase===2){
+    if(simpleTimers.empaque.estado==='activa')toggleEtapa('empaque');
+    const totP=pausaCtx.p3.lista.reduce((a,p)=>a+p.seg,0);
+    const ef=Math.max(0,simpleTimers.empaque.seg-totP);
+    grid=[['Lote',lid],['Fecha',new Date().toLocaleDateString('es-CL')],
+      ['Empaque',fmt(simpleTimers.empaque.seg)],['Pausas',fmt(totP)],['Efectivo',fmt(ef)]];
+    data={fase:'empaque',lote:lid,fecha:new Date().toISOString(),tiempoSeg:simpleTimers.empaque.seg,tiempoFmt:fmt(simpleTimers.empaque.seg),pausasSeg:totP,pausasFmt:fmt(totP),efectivoSeg:ef,efectivoFmt:fmt(ef),pausas:pausaCtx.p3.lista.map(p=>({durSeg:p.seg,durFmt:fmt(p.seg),nota:p.nota})),notas:document.getElementById('notas-p3').value};
+
+  } else if(phase===3){
+    if(simpleTimers.etiquetado.estado==='activa')toggleEtapa('etiquetado');
+    const totP=pausaCtx.p4.lista.reduce((a,p)=>a+p.seg,0);
+    const ef=Math.max(0,simpleTimers.etiquetado.seg-totP);
+    grid=[['Lote',lid],['Fecha',new Date().toLocaleDateString('es-CL')],
+      ['Etiquetado',fmt(simpleTimers.etiquetado.seg)],['Pausas',fmt(totP)],['Efectivo',fmt(ef)],
+      ['Destino',document.getElementById('destino').options[document.getElementById('destino').selectedIndex].text]];
+    data={fase:'etiquetado',lote:lid,fecha:new Date().toISOString(),tiempoSeg:simpleTimers.etiquetado.seg,tiempoFmt:fmt(simpleTimers.etiquetado.seg),pausasSeg:totP,pausasFmt:fmt(totP),efectivoSeg:ef,efectivoFmt:fmt(ef),destino:document.getElementById('destino').value,pausas:pausaCtx.p4.lista.map(p=>({durSeg:p.seg,durFmt:fmt(p.seg),nota:p.nota})),notas:document.getElementById('notas-p4').value};
+  }
+
+  jsonExports[phase]=data;
+  document.getElementById('rg-'+phase).innerHTML=grid.map(([l,v])=>`<div class="resumen-field"><label>${l}</label><div class="v">${v}</div></div>`).join('');
+  document.getElementById('eb-'+phase).textContent=JSON.stringify(data,null,2);
+  const r=document.getElementById('resumen-'+phase);r.classList.add('on');r.scrollIntoView({behavior:'smooth'});
+}
+
+function copiarJSON(phase){navigator.clipboard.writeText(document.getElementById('eb-'+phase).textContent).then(()=>alert('¡Copiado!'));}
+function descargarJSON(phase){
+  const fases=['prep-conteo','armado','empaque','etiquetado'];
+  const blob=new Blob([document.getElementById('eb-'+phase).textContent],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download=loteId()+'-'+fases[phase]+'-'+sesId+'.json';a.click();
+}
+function fmt(s){return `${Math.floor(s/3600).toString().padStart(2,'0')}:${Math.floor((s%3600)/60).toString().padStart(2,'0')}:${(s%60).toString().padStart(2,'0')}`;}
+
+// ═══ INIT DRUMS ═══
+renderTipos();
+createDrum('tp-preparacion','preparacion');
+createDrum('tp-conteo','conteo');
+createDrum('tp-empaque','empaque');
+createDrum('tp-etiquetado','etiquetado');
+</script>
+</body>
+</html>
