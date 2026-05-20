@@ -1068,37 +1068,82 @@ function finalizarFase(phase){
 
   if(phase===0){
     ['preparacion','conteo-global'].forEach(id=>{if(cronos[id].estado==='activa')toggleCrono(id);});
-    Object.keys(conteoTipos).forEach(id=>{if(conteoTipos[id].estado==='activa')toggleConteoTipo();});
+
+    // auto-recalc conteo[] from bordeA+G for all completed tipos
+    TIPOS.forEach(t=>{
+      const s=conteoTipos[t.id];
+      if(s.estado==='terminado'&&s.total>0) conteo[t.id]=s.total;
+    });
+
     const total=Object.values(conteo).reduce((a,b)=>a+b,0);
     const sorted=[...TIPOS].sort((a,b)=>conteo[a.id]-conteo[b.id]);
-    const totP=pausaCtx.p1.lista.reduce((a,p)=>a+p.seg,0);
-    grid=[['Lote',lid],['Sesión',sesId],['Fecha',new Date().toLocaleDateString('es-CL')],
+
+    // auto-calculate conteo total bruto from first inicio to last fin of tipos
+    const tiposConHoras=TIPOS.filter(t=>conteoTipos[t.id].estado==='terminado'&&conteoTipos[t.id].horaInicio&&conteoTipos[t.id].horaFin);
+    let conteoTotalBrutoSeg=0;
+    let conteoTotalEfectivoSeg=0;
+    let conteoInicioStr='—'; let conteoFinStr='—';
+    if(tiposConHoras.length>0){
+      const toMin=h=>{const p=h.split(':').map(Number);return p[0]*60+p[1];};
+      const horas=tiposConHoras.map(t=>({
+        ini:typeof conteoTipos[t.id].horaInicio==='string'?conteoTipos[t.id].horaInicio:conteoTipos[t.id].horaInicio.toTimeString().slice(0,5),
+        fin:typeof conteoTipos[t.id].horaFin==='string'?conteoTipos[t.id].horaFin:conteoTipos[t.id].horaFin.toTimeString().slice(0,5),
+        seg:conteoTipos[t.id].seg
+      }));
+      const primerInicio=horas.reduce((a,b)=>toMin(a.ini)<toMin(b.ini)?a:b).ini;
+      const ultimoFin=horas.reduce((a,b)=>toMin(a.fin)>toMin(b.fin)?a:b).fin;
+      conteoInicioStr=primerInicio; conteoFinStr=ultimoFin;
+      conteoTotalBrutoSeg=(toMin(ultimoFin)-toMin(primerInicio))*60;
+      // efectivo = suma de seg de cada tipo (sin contar gaps/pausas entre tipos)
+      conteoTotalEfectivoSeg=horas.reduce((a,b)=>a+b.seg,0);
+    }
+
+    const totPausaSeg=pausaCtx.p1.lista.reduce((a,p)=>a+p.seg,0);
+
+    grid=[
+      ['Lote',lid],['Sesión',sesId],['Fecha',new Date().toLocaleDateString('es-CL')],
       ['Pack',document.getElementById('tipo-pack').value+' unidades'],
       ['Espacio',document.getElementById('cond-espacio').options[document.getElementById('cond-espacio').selectedIndex].text],
       ['Prep. mesa',fmt(cronos.preparacion.seg)],
-      ['Conteo total',fmt(cronos['conteo-global'].seg)],
-      ['Pausas ('+pausaCtx.p1.lista.length+')',fmt(totP)],
-      ['Total cartas',total],['Reconteos',reconteos.length]];
+      ['Conteo bruto',conteoInicioStr+'→'+conteoFinStr+' ('+fmt(conteoTotalBrutoSeg)+')'],
+      ['Conteo efectivo',fmt(conteoTotalEfectivoSeg)+' (solo tipos activos)'],
+      ['Pausas ('+pausaCtx.p1.lista.length+')',fmt(totPausaSeg)],
+      ['Total cartas',total],['Reconteos',reconteos.length]
+    ];
 
     document.getElementById('rt-0').innerHTML=TIPOS.filter(t=>conteoTipos[t.id].seg>0).map(t=>{
       const s=conteoTipos[t.id];
       const hi=typeof s.horaInicio==='string'?s.horaInicio:(s.horaInicio?s.horaInicio.toTimeString().slice(0,5):'—');
       const hf=typeof s.horaFin==='string'?s.horaFin:(s.horaFin?s.horaFin.toTimeString().slice(0,5):'—');
-      return `<div class="res-row"><span style="color:${t.color}">● ${t.label}</span><span>${fmt(s.seg)} · ${hi}→${hf}</span></div>`;
+      return `<div class="res-row"><span style="color:${t.color}">● ${t.label}</span><span>${fmt(s.seg)} · ${hi}→${hf} · A:${s.bordeA||0} G:${s.bordeG||0} T:${s.total||0}</span></div>`;
     }).join('');
     document.getElementById('rc-0').innerHTML=sorted.map(t=>`<div class="res-row"><span style="color:${t.color}">● ${t.label}</span><span>${conteo[t.id]}</span></div>`).join('')+
       `<div class="res-row"><span style="color:var(--accent)">TOTAL</span><span style="color:var(--accent)">${total}</span></div>`;
 
-    data={fase:'preparacion_conteo',lote:lid,sesion:sesId,fecha:new Date().toISOString(),
+    data={
+      fase:'preparacion_conteo',lote:lid,sesion:sesId,fecha:new Date().toISOString(),
       config:{tipoPack:document.getElementById('tipo-pack').value,condicionEspacio:document.getElementById('cond-espacio').value},
-      cronos:{preparacion:{seg:cronos.preparacion.seg,fmt:fmt(cronos.preparacion.seg),horaInicio:cronos.preparacion.horaInicio,horaFin:cronos.preparacion.horaFin,esManual:cronos.preparacion.esManual},
-        conteoGlobal:{seg:cronos['conteo-global'].seg,fmt:fmt(cronos['conteo-global'].seg),horaInicio:cronos['conteo-global'].horaInicio,horaFin:cronos['conteo-global'].horaFin,esManual:cronos['conteo-global'].esManual}},
-      tiemposPorTipo:TIPOS.map(t=>({tipo:t.label,seg:conteoTipos[t.id].seg,fmt:fmt(conteoTipos[t.id].seg),horaInicio:conteoTipos[t.id].horaInicio,horaFin:conteoTipos[t.id].horaFin,esManual:conteoTipos[t.id].esManual,bordeAmarillo:conteoTipos[t.id].bordeA||0,bordeGris:conteoTipos[t.id].bordeG||0,total:conteoTipos[t.id].total||0})),
+      preparacion:{seg:cronos.preparacion.seg,fmt:fmt(cronos.preparacion.seg),horaInicio:cronos.preparacion.horaInicio,horaFin:cronos.preparacion.horaFin},
+      conteoGlobal:{
+        inicioPrimerTipo:conteoInicioStr, finUltimoTipo:conteoFinStr,
+        brutoSeg:conteoTotalBrutoSeg, brutoFmt:fmt(conteoTotalBrutoSeg),
+        efectivoSeg:conteoTotalEfectivoSeg, efectivoFmt:fmt(conteoTotalEfectivoSeg),
+        nota:'Bruto=primer inicio a último fin. Efectivo=suma real de tiempo por tipo.'
+      },
+      tiemposPorTipo:TIPOS.map(t=>({
+        tipo:t.label,
+        seg:conteoTipos[t.id].seg, fmt:fmt(conteoTipos[t.id].seg),
+        horaInicio:conteoTipos[t.id].horaInicio, horaFin:conteoTipos[t.id].horaFin,
+        bordeAmarillo:conteoTipos[t.id].bordeA||0,
+        bordeGris:conteoTipos[t.id].bordeG||0,
+        total:conteoTipos[t.id].total||conteo[t.id]||0
+      })),
       conteo:{...Object.fromEntries(TIPOS.map(t=>[t.id,conteo[t.id]])),TOTAL:total},
-      conteoOrdenado:sorted.map(t=>({tipo:t.label,cantidad:conteo[t.id]})),
+      conteoOrdenado:sorted.map(t=>({tipo:t.label,cantidad:conteo[t.id],bordeAmarillo:conteoTipos[t.id].bordeA||0,bordeGris:conteoTipos[t.id].bordeG||0})),
       reconteos:reconteos.map(r=>({idx:r.idx,motivo:r.motivo,hora:r.hora})),
-      pausas:pausaCtx.p1.lista.map(p=>({durSeg:p.seg,durFmt:fmt(p.seg),nota:p.nota,hora:p.inicio.toTimeString().slice(0,5)})),
-      notas:document.getElementById('notas-p1').value};
+      pausas:pausaCtx.p1.lista.map(p=>({horaInicio:p.horaInicio,horaFin:p.horaFin,durSeg:p.seg,durFmt:fmt(p.seg),nota:p.nota})),
+      notas:document.getElementById('notas-p1').value
+    };
 
   } else if(phase===1){
     const sorted=[...TIPOS].sort((a,b)=>conteo[a.id]-conteo[b.id]);
