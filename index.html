@@ -630,7 +630,7 @@ function guardarLS(){
       cronos:cronosSer,
       pausas:pausasSer,
       armadoTipos:atSer,
-      incidencias,
+      incidencias:Object.fromEntries(Object.entries(incidencias).map(([k,v])=>[k,v||[]])),
       armadoNum:document.getElementById('armado-num')?document.getElementById('armado-num').value:'1',
       notas:{
         p1:document.getElementById('notas-p1').value,
@@ -705,7 +705,15 @@ function cargarLS(){
     }
     if(d.armadoTipos){
       Object.keys(d.armadoTipos).forEach(id=>{
-        if(armadoTipos[id])Object.assign(armadoTipos[id],d.armadoTipos[id]);
+        if(armadoTipos[id]){
+          Object.assign(armadoTipos[id],d.armadoTipos[id]);
+          // si estaba activo al guardar, el tiempo quedó congelado — marcarlo terminado
+          // (no podemos saber cuánto tiempo pasó sin el cronómetro corriendo)
+          if(armadoTipos[id].estado==='activa'){
+            armadoTipos[id].estado='terminado';
+            armadoTipos[id].horaFin=new Date().toTimeString().slice(0,5);
+          }
+        }
       });
     }
     if(d.incidencias){
@@ -719,8 +727,23 @@ function cargarLS(){
     }
     renderTipos();renderReconteos();renderSavedTipos();initTipoSelector();renderTiposProgreso();
     ['p1','p2','p3','p4'].forEach(ctx=>renderPausas(ctx));
-    // si fase 2 estaba activa, reconstruir armado
-    if(d.phaseDone&&d.phaseDone[0]){initArmado();}
+    // navegar a la fase correcta
+    if(d.phaseDone){
+      // encontrar la última fase desbloqueada
+      let faseActual=0;
+      for(let i=0;i<4;i++){if(d.phaseDone[i])faseActual=i+1;}
+      faseActual=Math.min(faseActual,3);
+      // mostrar fase correcta sin la guardia de phaseDone
+      document.querySelectorAll('.phase-panel').forEach((p,i)=>p.classList.toggle('active',i===faseActual));
+      document.querySelectorAll('.step').forEach((s,i)=>{
+        s.classList.remove('active','done','locked');
+        if(i===faseActual)s.classList.add('active');
+        else if(d.phaseDone[i])s.classList.add('done');
+        else s.classList.add('locked');
+      });
+      document.getElementById('prog-bar').style.width=(d.phaseDone.filter(Boolean).length*25)+'%';
+      if(faseActual===1||d.phaseDone[0])initArmado();
+    }
   }catch(e){console.error('cargarLS error',e);}
 }
 
@@ -737,6 +760,7 @@ function goPhase(n){
   document.getElementById('prog-bar').style.width=(phaseDone.filter(Boolean).length*25)+'%';
   window.scrollTo({top:0,behavior:'smooth'});
   if(n===1)initArmado();
+  guardarLS();
 }
 function desbloquearSiguiente(p){phaseDone[p]=true;guardarLS();goPhase(p+1);}
 
@@ -1008,9 +1032,13 @@ function renderReconteos(){
 // ═══ ARMADO ═══
 function initArmado(){
   const sorted=[...TIPOS].sort((a,b)=>conteo[a.id]-conteo[b.id]);
+  // solo inicializar tipos que no tienen datos guardados
+  sorted.forEach(t=>{
+    if(!armadoTipos[t.id])armadoTipos[t.id]={seg:0,iv:null,estado:'pendiente',horaInicio:null,horaFin:null,esManual:false};
+    if(!incidencias[t.id])incidencias[t.id]=[];
+  });
   const sel=document.getElementById('pausa-etapa-p2');
-  sel.innerHTML='<option value="">— Sin especificar</option>';
-  sorted.forEach(t=>sel.innerHTML+=`<option value="${t.id}">${t.label}</option>`);
+  if(sel){sel.innerHTML='<option value="">— Sin especificar</option>';sorted.forEach(t=>sel.innerHTML+=`<option value="${t.id}">${t.label}</option>`);}
   renderArmado();
 }
 function renderArmado(){
@@ -1062,9 +1090,19 @@ function renderArmado(){
 }
 function toggleArmado(id){
   const s=armadoTipos[id];
-  if(s.estado==='pendiente'){s.horaInicio=new Date();s.estado='activa';s.iv=setInterval(()=>{s.seg++;const el=document.getElementById('atimer-'+id);if(el)el.textContent=fmt(s.seg);},1000);}
-  else if(s.estado==='activa'){clearInterval(s.iv);s.horaFin=new Date();s.estado='terminado';}
-  else{clearInterval(s.iv);armadoTipos[id]={seg:0,iv:null,estado:'pendiente',horaInicio:null,horaFin:null,esManual:false};}
+  if(s.estado==='pendiente'){
+    const now=new Date();
+    s.horaInicio=now.toTimeString().slice(0,5);
+    s.estado='activa';
+    s.iv=setInterval(()=>{s.seg++;const el=document.getElementById('atimer-'+id);if(el)el.textContent=fmt(s.seg);},1000);
+  } else if(s.estado==='activa'){
+    clearInterval(s.iv);
+    s.horaFin=new Date().toTimeString().slice(0,5);
+    s.estado='terminado';
+  } else {
+    clearInterval(s.iv);
+    armadoTipos[id]={seg:0,iv:null,estado:'pendiente',horaInicio:null,horaFin:null,esManual:false};
+  }
   renderArmado();guardarLS();
 }
 function guardarManualArmado(id){
