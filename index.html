@@ -380,21 +380,18 @@ textarea:focus{outline:none;border-color:var(--accent);}
 
   <div class="fin-wrap">
     <div class="fin-note">Al finalizar se genera el JSON y se desbloquea el Armado.</div>
-    <button class="fin-btn" onclick="finalizarFase(0)">✓ Finalizar Prep + Conteo</button>
+    <button class="fin-btn" id="fin-btn-0" onclick="finalizarFase(0)">✓ Finalizar Sesión</button>
   </div>
   <div class="resumen" id="resumen-0">
     <div class="resumen-title">▸ Sesión: Prep + Conteo</div>
     <div class="resumen-grid" id="rg-0"></div>
     <div class="divider"></div><span class="tag-s">Tiempos por tipo de energía</span><div id="rt-0"></div>
     <div class="divider"></div><span class="tag-s">Cartas por tipo (menor → mayor)</span><div id="rc-0"></div>
-    <div class="divider"></div><span class="tag-s">JSON</span>
-    <div class="export-box" id="eb-0"></div>
-    <div class="btn-row" style="margin-top:8px;">
-      <button class="btn primary" onclick="copiarJSON(0)">Copiar JSON</button>
-      <button class="btn success" onclick="descargarJSON(0)">⬇ Descargar</button>
-    </div>
     <div class="divider"></div>
-    <button class="btn primary" style="font-size:14px;padding:10px 22px;" onclick="desbloquearSiguiente(0)">Continuar → Armado</button>
+    <div class="btn-row">
+      <button class="btn success" onclick="descargarPDF(0)">⬇ Descargar PDF</button>
+      <button class="btn primary" style="font-size:13px;padding:9px 18px;" onclick="desbloquearSiguiente(0)">Continuar → Armado</button>
+    </div>
   </div>
 </div>
 
@@ -423,21 +420,16 @@ textarea:focus{outline:none;border-color:var(--accent);}
   <div class="panel"><div class="section-title">Notas</div><textarea id="notas-p2" placeholder="Observaciones del día..."></textarea></div>
   <div class="fin-wrap">
     <div class="fin-note">Finaliza al terminar el día o al completar todos los tipos.</div>
-    <button class="fin-btn" onclick="finalizarFase(1)">✓ Finalizar Sesión de Armado</button>
+    <button class="fin-btn" id="fin-btn-1" onclick="finalizarFase(1)">✓ Finalizar Sesión de Armado</button>
   </div>
   <div class="resumen" id="resumen-1">
     <div class="resumen-title">▸ Sesión: Armado</div>
     <div class="resumen-grid" id="rg-1"></div>
     <div class="divider"></div><span class="tag-s">Tiempo por tipo</span><div id="rt-1"></div>
     <div class="divider"></div><span class="tag-s">Pausas</span><div id="rp-1"></div>
-    <div class="divider"></div><span class="tag-s">JSON</span>
-    <div class="export-box" id="eb-1"></div>
-    <div class="btn-row" style="margin-top:8px;">
-      <button class="btn primary" onclick="copiarJSON(1)">Copiar JSON</button>
-      <button class="btn success" onclick="descargarJSON(1)">⬇ Descargar</button>
-    </div>
     <div class="divider"></div>
     <div class="btn-row">
+      <button class="btn success" onclick="descargarPDF(1)">⬇ Descargar PDF</button>
       <button class="btn" onclick="otraSesionArmado()">+ Nueva sesión (mañana)</button>
       <button class="btn primary" style="font-size:13px;padding:9px 18px;" onclick="desbloquearSiguiente(1)">Continuar → Empaque</button>
     </div>
@@ -446,23 +438,62 @@ textarea:focus{outline:none;border-color:var(--accent);}
 
 <!-- ═══ FASE 3 ═══ -->
 <div class="phase-panel" id="phase-2">
-  <div class="info-box">ℹ️ <strong>Fase 3 — Empaque.</strong></div>
+  <div class="info-box">ℹ️ <strong>Fase 3 — Empaque.</strong> Registra los tres subprocesos por separado. <span class="persist-badge">● AUTO-GUARDADO</span></div>
   <div class="panel">
-    <div class="section-title">Cronómetro de Empaque</div>
-    <div class="crono-card" style="max-width:320px;" id="card-empaque">
-      <div class="crono-nombre">Empaque</div>
-      <div class="crono-tiempo" id="timer-empaque">00:00:00</div>
-      <div class="crono-hora-inicio" id="hinicio-empaque">—</div>
-      <div class="crono-estado" id="estado-empaque">— PENDIENTE</div>
-      <div class="btn-row"><button class="btn primary" id="btn-empaque" onclick="toggleCrono('empaque')">▶ Iniciar</button></div>
-      <div class="manual-box">
-        <div class="manual-label">Ingresa desde cuaderno:</div>
-        <div class="manual-grid">
-          <div><div class="field-label">Inicio</div><input type="time" id="min-empaque"/></div>
-          <div><div class="field-label">Fin</div><input type="time" id="mfin-empaque"/></div>
+    <div class="section-title">Cronómetros de Empaque</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;">
+
+      <!-- Prep etiquetas -->
+      <div class="crono-card" id="card-prep-etiquetas">
+        <div class="crono-nombre">Prep. Etiquetas</div>
+        <div class="crono-tiempo" id="timer-prep-etiquetas">00:00:00</div>
+        <div class="crono-hora-inicio" id="hinicio-prep-etiquetas">—</div>
+        <div class="crono-estado" id="estado-prep-etiquetas">— PENDIENTE</div>
+        <div class="btn-row"><button class="btn primary" id="btn-prep-etiquetas" onclick="toggleCrono('prep-etiquetas')">▶ Iniciar</button></div>
+        <div class="manual-box">
+          <div class="manual-label">Ingresa desde cuaderno:</div>
+          <div class="manual-grid">
+            <div><div class="field-label">Inicio</div><input type="time" id="min-prep-etiquetas"/></div>
+            <div><div class="field-label">Fin</div><input type="time" id="mfin-prep-etiquetas"/></div>
+          </div>
+          <button class="btn" onclick="guardarManual('prep-etiquetas')">Guardar Etiquetas</button>
         </div>
-        <button class="btn" onclick="guardarManual('empaque')">Guardar Empaque</button>
       </div>
+
+      <!-- Prep envoltorios -->
+      <div class="crono-card" id="card-prep-envoltorios">
+        <div class="crono-nombre">Prep. Envoltorios</div>
+        <div class="crono-tiempo" id="timer-prep-envoltorios">00:00:00</div>
+        <div class="crono-hora-inicio" id="hinicio-prep-envoltorios">—</div>
+        <div class="crono-estado" id="estado-prep-envoltorios">— PENDIENTE</div>
+        <div class="btn-row"><button class="btn primary" id="btn-prep-envoltorios" onclick="toggleCrono('prep-envoltorios')">▶ Iniciar</button></div>
+        <div class="manual-box">
+          <div class="manual-label">Ingresa desde cuaderno:</div>
+          <div class="manual-grid">
+            <div><div class="field-label">Inicio</div><input type="time" id="min-prep-envoltorios"/></div>
+            <div><div class="field-label">Fin</div><input type="time" id="mfin-prep-envoltorios"/></div>
+          </div>
+          <button class="btn" onclick="guardarManual('prep-envoltorios')">Guardar Envoltorios</button>
+        </div>
+      </div>
+
+      <!-- Empaque -->
+      <div class="crono-card" id="card-empaque">
+        <div class="crono-nombre">Empaque</div>
+        <div class="crono-tiempo" id="timer-empaque">00:00:00</div>
+        <div class="crono-hora-inicio" id="hinicio-empaque">—</div>
+        <div class="crono-estado" id="estado-empaque">— PENDIENTE</div>
+        <div class="btn-row"><button class="btn primary" id="btn-empaque" onclick="toggleCrono('empaque')">▶ Iniciar</button></div>
+        <div class="manual-box">
+          <div class="manual-label">Ingresa desde cuaderno:</div>
+          <div class="manual-grid">
+            <div><div class="field-label">Inicio</div><input type="time" id="min-empaque"/></div>
+            <div><div class="field-label">Fin</div><input type="time" id="mfin-empaque"/></div>
+          </div>
+          <button class="btn" onclick="guardarManual('empaque')">Guardar Empaque</button>
+        </div>
+      </div>
+
     </div>
   </div>
   <div class="panel">
@@ -479,14 +510,11 @@ textarea:focus{outline:none;border-color:var(--accent);}
   <div class="resumen" id="resumen-2">
     <div class="resumen-title">▸ Sesión: Empaque</div>
     <div class="resumen-grid" id="rg-2"></div>
-    <div class="divider"></div><span class="tag-s">JSON</span>
-    <div class="export-box" id="eb-2"></div>
-    <div class="btn-row" style="margin-top:8px;">
-      <button class="btn primary" onclick="copiarJSON(2)">Copiar JSON</button>
-      <button class="btn success" onclick="descargarJSON(2)">⬇ Descargar</button>
-    </div>
     <div class="divider"></div>
-    <button class="btn primary" style="font-size:13px;padding:9px 18px;" onclick="desbloquearSiguiente(2)">Continuar → Etiquetado</button>
+    <div class="btn-row">
+      <button class="btn success" onclick="descargarPDF(2)">⬇ Descargar PDF</button>
+      <button class="btn primary" style="font-size:13px;padding:9px 18px;" onclick="desbloquearSiguiente(2)">Continuar → Etiquetado</button>
+    </div>
   </div>
 </div>
 
@@ -525,14 +553,11 @@ textarea:focus{outline:none;border-color:var(--accent);}
   <div class="resumen" id="resumen-3">
     <div class="resumen-title">▸ ¡Lote al 100%!</div>
     <div class="resumen-grid" id="rg-3"></div>
-    <div class="divider"></div><span class="tag-s">JSON</span>
-    <div class="export-box" id="eb-3"></div>
-    <div class="btn-row" style="margin-top:8px;">
-      <button class="btn primary" onclick="copiarJSON(3)">Copiar JSON</button>
-      <button class="btn success" onclick="descargarJSON(3)">⬇ Descargar</button>
-    </div>
     <div class="divider"></div>
-    <button class="btn" onclick="nuevoLote()">Nuevo Lote</button>
+    <div class="btn-row">
+      <button class="btn success" onclick="descargarPDF(3)">⬇ Descargar PDF</button>
+      <button class="btn danger" onclick="nuevoLote()">🗑 Nuevo Lote (resetear todo)</button>
+    </div>
   </div>
 </div>
 
@@ -561,7 +586,7 @@ let jsonExports=[null,null,null,null];
 
 // Cronómetros simples
 let cronos={};
-['preparacion','conteo-global','empaque','etiquetado'].forEach(id=>{
+['preparacion','conteo-global','prep-etiquetas','prep-envoltorios','empaque','etiquetado'].forEach(id=>{
   cronos[id]={seg:0,iv:null,estado:'pendiente',horaInicio:null,horaFin:null,esManual:false};
 });
 
@@ -668,7 +693,7 @@ function cargarLS(){
         if(cronos[id])Object.assign(cronos[id],d.cronos[id]);
       });
       // restaurar display de cronos
-      ['preparacion','conteo-global','empaque','etiquetado'].forEach(id=>{
+      ['preparacion','conteo-global','prep-etiquetas','prep-envoltorios','empaque','etiquetado'].forEach(id=>{
         const c=cronos[id];
         if(c.seg>0){
           const el=document.getElementById('timer-'+id);
@@ -915,6 +940,7 @@ function guardarConteotipo(){
   guardarLS();renderSavedTipos();initTipoSelector();renderTipos();
   cambiarTipoActivo();
   renderTiposProgreso();
+  actualizarBotonesFin();
   document.getElementById('ctc-min').value='';
   document.getElementById('ctc-bordeA').value='';
   document.getElementById('ctc-bordeG').value='';
@@ -1136,7 +1162,7 @@ function terminarArmado(id){
   // actualizar input fin sin borrar inicio
   const inputFin=document.getElementById('afin-'+id);
   if(inputFin)inputFin.value=s.horaFin;
-  renderArmado();guardarLS();
+  renderArmado();guardarLS();actualizarBotonesFin();
 }
 function reiniciarArmado(id){
   clearInterval(armadoTipos[id].iv);
@@ -1171,7 +1197,7 @@ function guardarManualArmado(id){
   if(ini)s.horaInicio=ini;
   if(fin)s.horaFin=fin;
   s.estado='terminado';s.esManual=true;
-  renderArmado();guardarLS();
+  renderArmado();guardarLS();actualizarBotonesFin();
 }
 function addInc(id){
   const tipo=document.getElementById('inc-tipo-'+id).value;
@@ -1400,11 +1426,11 @@ function finalizarFase(phase){
       notas:document.getElementById('notas-p2').value};
 
   } else if(phase===2){
-    if(cronos.empaque.estado==='activa')toggleCrono('empaque');
+    ['prep-etiquetas','prep-envoltorios','empaque'].forEach(id=>{if(cronos[id]&&cronos[id].estado==='activa')toggleCrono(id);});
     const totP=pausaCtx.p3.lista.reduce((a,p)=>a+p.seg,0);
     const ef=Math.max(0,cronos.empaque.seg-totP);
-    grid=[['Lote',lid],['Fecha',new Date().toLocaleDateString('es-CL')],['Empaque',fmt(cronos.empaque.seg)],['Pausas',fmt(totP)],['Efectivo',fmt(ef)]];
-    data={fase:'empaque',lote:lid,fecha:new Date().toISOString(),tiempoSeg:cronos.empaque.seg,tiempoFmt:fmt(cronos.empaque.seg),pausasSeg:totP,pausasFmt:fmt(totP),efectivoSeg:ef,efectivoFmt:fmt(ef),pausas:pausaCtx.p3.lista.map(p=>({durSeg:p.seg,durFmt:fmt(p.seg),nota:p.nota})),notas:document.getElementById('notas-p3').value};
+    grid=[['Lote',lid],['Fecha',new Date().toLocaleDateString('es-CL')],['Prep. Etiquetas',fmt(cronos['prep-etiquetas'].seg)],['Prep. Envoltorios',fmt(cronos['prep-envoltorios'].seg)],['Empaque',fmt(cronos.empaque.seg)],['Pausas',fmt(totP)],['Efectivo',fmt(ef)]];
+    data={fase:'empaque',lote:lid,fecha:new Date().toISOString(),prepEtiquetasSeg:cronos['prep-etiquetas'].seg,prepEtiquetasFmt:fmt(cronos['prep-etiquetas'].seg),prepEnvoltoriosSeg:cronos['prep-envoltorios'].seg,prepEnvoltoriosFmt:fmt(cronos['prep-envoltorios'].seg),empaqueSeg:cronos.empaque.seg,empaqueFmt:fmt(cronos.empaque.seg),pausasSeg:totP,pausasFmt:fmt(totP),efectivoSeg:ef,efectivoFmt:fmt(ef),pausas:pausaCtx.p3.lista.map(p=>({durSeg:p.seg,durFmt:fmt(p.seg),nota:p.nota})),notas:document.getElementById('notas-p3').value};
 
   } else if(phase===3){
     if(cronos.etiquetado.estado==='activa')toggleCrono('etiquetado');
@@ -1421,14 +1447,99 @@ function finalizarFase(phase){
   guardarLS();
 }
 
-function copiarJSON(p){navigator.clipboard.writeText(document.getElementById('eb-'+p).textContent).then(()=>alert('¡Copiado!'));}
-function descargarJSON(p){
-  const fases=['prep-conteo','armado','empaque','etiquetado'];
-  const blob=new Blob([document.getElementById('eb-'+p).textContent],{type:'application/json'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
-  a.download=loteId()+'-'+fases[p]+'-'+sesId+'.json';a.click();
+// ── PDF DOWNLOAD ──
+function descargarPDF(phase){
+  const data=jsonExports[phase];
+  if(!data){alert('Primero finaliza la sesión.');return;}
+  const nombres=['Etapa 1 - Preparacion y Conteo','Etapa 2 - Armado','Etapa 3 - Empaque','Etapa 4 - Etiquetado'];
+  const sesNum=phase===1?(parseInt(document.getElementById('armado-num').value)||1):1;
+  const titulo=phase===1?`Etapa 2 - Armado - Sesion ${sesNum}`:nombres[phase];
+  const lid=loteId();
+  const fecha=new Date().toLocaleDateString('es-CL');
+
+  // Construir HTML del PDF
+  let body=`<h1 style="color:#f5c842;font-family:monospace;">${titulo}</h1>`;
+  body+=`<p style="color:#888;font-family:monospace;">${lid} · ${fecha}</p><hr style="border-color:#333;">`;
+
+  // Resumen grid
+  const grid=document.getElementById('rg-'+phase);
+  if(grid){
+    body+='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:16px 0;">';
+    grid.querySelectorAll('.resumen-field').forEach(f=>{
+      const lbl=f.querySelector('label')?.textContent||'';
+      const val=f.querySelector('.v')?.textContent||'';
+      body+=`<div style="background:#1a1a1a;padding:10px;border-left:3px solid #f5c842;">
+        <div style="font-size:10px;color:#888;">${lbl}</div>
+        <div style="font-size:18px;color:#fff;">${val}</div>
+      </div>`;
+    });
+    body+='</div>';
+  }
+
+  // Tiempos por tipo (armado)
+  const rt=document.getElementById('rt-'+phase);
+  if(rt&&rt.innerHTML.trim()){
+    body+=`<h3 style="color:#888;font-family:monospace;border-bottom:1px solid #333;padding-bottom:6px;">TIEMPOS POR TIPO</h3>`;
+    body+=`<div style="font-family:monospace;">${rt.innerHTML}</div>`;
+  }
+
+  // Tiempos conteo
+  const rt0=document.getElementById('rt-0');
+  if(phase===0&&rt0&&rt0.innerHTML.trim()){
+    body+=`<h3 style="color:#888;font-family:monospace;border-bottom:1px solid #333;padding-bottom:6px;">TIEMPOS POR TIPO DE ENERGÍA</h3>`;
+    body+=`<div style="font-family:monospace;">${rt0.innerHTML}</div>`;
+    const rc0=document.getElementById('rc-0');
+    if(rc0){
+      body+=`<h3 style="color:#888;font-family:monospace;border-bottom:1px solid #333;padding-bottom:6px;">CARTAS POR TIPO</h3>`;
+      body+=`<div style="font-family:monospace;">${rc0.innerHTML}</div>`;
+    }
+  }
+
+  // Pausas
+  const rp=document.getElementById('rp-'+phase);
+  if(rp&&rp.innerHTML.trim()){
+    body+=`<h3 style="color:#888;font-family:monospace;border-bottom:1px solid #333;padding-bottom:6px;">PAUSAS</h3>`;
+    body+=`<div style="font-family:monospace;">${rp.innerHTML}</div>`;
+  }
+
+  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8">
+    <title>${titulo}</title>
+    <style>
+      body{background:#0f0f0f;color:#e8e8e0;font-family:monospace;padding:32px;max-width:900px;margin:0 auto;}
+      .res-row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #222;font-size:13px;}
+      hr{border-color:#333;}
+    </style>
+  </head><body>${body}</body></html>`;
+
+  const blob=new Blob([html],{type:'text/html'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  const fname=lid+'-'+titulo.replace(/[^a-zA-Z0-9]/g,'-')+'.html';
+  a.download=fname;a.click();
 }
-function nuevoLote(){if(confirm('¿Iniciar lote nuevo? Se borrarán los datos guardados.')){{localStorage.removeItem('packtracker_state');location.reload();}}}
+
+// ── BOTÓN DINÁMICO ──
+function actualizarBotonesFin(){
+  // Fase 0: todos los tipos completados?
+  const todosConteo=TIPOS.every(t=>conteoTipos[t.id].estado==='terminado');
+  const btn0=document.getElementById('fin-btn-0');
+  if(btn0)btn0.textContent=todosConteo?'✓ Finalizar Etapa 1 — Prep + Conteo':'✓ Finalizar Sesión';
+
+  // Fase 1: todos los tipos de armado completados?
+  const todosArmado=TIPOS.every(t=>armadoTipos[t.id].estado==='terminado');
+  const btn1=document.getElementById('fin-btn-1');
+  if(btn1)btn1.textContent=todosArmado?'✓ Finalizar Armado Completo':'✓ Finalizar Sesión de Armado';
+}
+
+function nuevoLote(){
+  if(confirm('¿Iniciar lote nuevo? Se borrarán TODOS los datos guardados.')){
+    // Limpiar todo
+    Object.keys(localStorage).forEach(k=>{
+      if(k.startsWith('packtracker')||k.startsWith('pausa_activa'))localStorage.removeItem(k);
+    });
+    location.reload();
+  }
+}
 function fmt(s){return `${Math.floor(s/3600).toString().padStart(2,'0')}:${Math.floor((s%3600)/60).toString().padStart(2,'0')}:${(s%60).toString().padStart(2,'0')}`;}
 
 // ═══ INIT ═══
@@ -1438,6 +1549,7 @@ renderTipos();
 renderReconteos();
 renderTiposProgreso();
 restaurarPausasActivas();
+actualizarBotonesFin();
 // Autosave cada 5 segundos
 setInterval(()=>{
   try{guardarLS();}catch(e){}
@@ -1524,7 +1636,7 @@ function precargarDatosHoy(){
   const btnCG=document.getElementById('btn-conteo-global');
   if(btnCG){btnCG.textContent='↺ Reiniciar';btnCG.className='btn';}
 
-  // ── Render ──
+  // ── Render fase 1 ──
   updTotal();
   renderTipos();
   renderSavedTipos();
@@ -1532,6 +1644,29 @@ function precargarDatosHoy(){
   renderTiposProgreso();
   renderReconteos();
   renderPausas('p1');
+
+  // ── Precargar datos armado sesión 1 ──
+  phaseDone[0]=true;
+
+  const armadoDatos=[
+    {id:'rayo',    hi:'11:29',hf:'11:51',seg:1320,inc:[{tipo:'carta_faltante',nota:'1 carta sobrante'}]},
+    {id:'metal',   hi:'11:54',hf:'12:18',seg:1440,inc:[{tipo:'carta_faltante',nota:'4 sobrantes'}]},
+    {id:'fuego',   hi:'13:23',hf:'13:59',seg:2160,inc:[{tipo:'carta_faltante',nota:'Método distinto. Armando previo en mesa.'}]},
+    {id:'oscuro',  hi:'14:07',hf:'14:34',seg:1620,inc:[{tipo:'otro',nota:'Sobraron 4'}]},
+    {id:'dragon',  hi:'16:28',hf:'16:44',seg:960, inc:[]},
+    {id:'incoloro',hi:'17:25',hf:'18:11',seg:2760,inc:[{tipo:'carta_faltante',nota:'Sobran 4'}]},
+  ];
+  armadoDatos.forEach(d=>{
+    armadoTipos[d.id]={seg:d.seg,iv:null,estado:'terminado',horaInicio:d.hi,horaFin:d.hf,esManual:true};
+    incidencias[d.id]=d.inc;
+  });
+
+  // pausas armado
+  pausaCtx.p2.lista=[
+    {horaInicio:'12:19',horaFin:'13:21',seg:3667,nota:'Dolor espalda y cansancio',etapa:'fuego'},
+    {horaInicio:'14:35',horaFin:'17:27',seg:10287,nota:'Almuerzo',etapa:'oscuro'},
+  ];
+
   guardarLS();
 }
 </script>
