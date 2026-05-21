@@ -613,6 +613,14 @@ function guardarLS(){
     ['p1','p2','p3','p4'].forEach(ctx=>{
       pausasSer[ctx]=pausaCtx[ctx].lista.map(p=>({horaInicio:p.horaInicio,horaFin:p.horaFin,seg:p.seg,nota:p.nota,etapa:p.etapa||''}));
     });
+    // serializar armadoTipos
+    const atSer={};
+    Object.keys(armadoTipos).forEach(id=>{
+      const s=armadoTipos[id];
+      const hi=s.horaInicio?(typeof s.horaInicio==='string'?s.horaInicio:s.horaInicio.toTimeString().slice(0,5)):null;
+      const hf=s.horaFin?(typeof s.horaFin==='string'?s.horaFin:s.horaFin.toTimeString().slice(0,5)):null;
+      atSer[id]={seg:s.seg,estado:s.estado,horaInicio:hi,horaFin:hf,esManual:s.esManual||false};
+    });
     const data={
       loteId:document.getElementById('lote-id').value,
       tipoPack:document.getElementById('tipo-pack').value,
@@ -621,6 +629,9 @@ function guardarLS(){
       conteoTipos:ctSer,
       cronos:cronosSer,
       pausas:pausasSer,
+      armadoTipos:atSer,
+      incidencias,
+      armadoNum:document.getElementById('armado-num')?document.getElementById('armado-num').value:'1',
       notas:{
         p1:document.getElementById('notas-p1').value,
         p2:document.getElementById('notas-p2').value,
@@ -692,8 +703,24 @@ function cargarLS(){
       });
       document.getElementById('prog-bar').style.width=(d.phaseDone.filter(Boolean).length*25)+'%';
     }
+    if(d.armadoTipos){
+      Object.keys(d.armadoTipos).forEach(id=>{
+        if(armadoTipos[id])Object.assign(armadoTipos[id],d.armadoTipos[id]);
+      });
+    }
+    if(d.incidencias){
+      Object.keys(d.incidencias).forEach(id=>{
+        if(Array.isArray(d.incidencias[id]))incidencias[id]=d.incidencias[id];
+      });
+    }
+    if(d.armadoNum){
+      const el=document.getElementById('armado-num');
+      if(el)el.value=d.armadoNum;
+    }
     renderTipos();renderReconteos();renderSavedTipos();initTipoSelector();renderTiposProgreso();
     ['p1','p2','p3','p4'].forEach(ctx=>renderPausas(ctx));
+    // si fase 2 estaba activa, reconstruir armado
+    if(d.phaseDone&&d.phaseDone[0]){initArmado();}
   }catch(e){console.error('cargarLS error',e);}
 }
 
@@ -1008,7 +1035,7 @@ function renderArmado(){
       <div class="ac-body">
         <div>
           <div class="ac-timer ${s.estado==='activa'?'running':''}" id="atimer-${t.id}">${fmt(s.seg)}</div>
-          <div class="ac-hora-inicio">${hi?'Inicio: '+hi:'—'}</div>
+          <div class="ac-hora-inicio">${hi?'Inicio: '+hi+(s.horaFin?(typeof s.horaFin==='string'?' → Fin: '+s.horaFin:' → Fin: '+s.horaFin.toTimeString().slice(0,5)):''):'—'}</div>
           <div class="ac-estado">${estLabel}</div>
           <div class="btn-row"><button class="btn ${btnCls}" onclick="toggleArmado('${t.id}')">${btnLabel}</button></div>
           <div class="ac-manual">
@@ -1024,7 +1051,7 @@ function renderArmado(){
           <div style="font-size:10px;color:var(--muted);margin-bottom:5px;letter-spacing:1px;">INCIDENCIAS</div>
           <div class="inc-list">${inc.length?inc.map(i=>`<div class="inc-item"><span class="inc-tag">${i.tipo}</span><span>${i.nota}</span></div>`).join(''):'<div style="color:var(--muted);font-size:11px;">Sin incidencias.</div>'}</div>
           <div class="inc-form">
-            <select id="inc-tipo-${t.id}"><option value="carta_faltante">Carta faltante</option><option value="error_armado">Error armado</option><option value="ritmo_bajo">Ritmo bajo</option><option value="otro">Otro</option></select>
+            <select id="inc-tipo-${t.id}"><option value="carta_faltante">Carta faltante</option><option value="error_posicion">Error de posición</option><option value="ritmo_bajo">Ritmo bajo</option><option value="otro">Otro</option></select>
             <input type="text" id="inc-nota-${t.id}" placeholder="Nota..."/>
             <button class="btn" onclick="addInc('${t.id}')">+</button>
           </div>
@@ -1038,7 +1065,7 @@ function toggleArmado(id){
   if(s.estado==='pendiente'){s.horaInicio=new Date();s.estado='activa';s.iv=setInterval(()=>{s.seg++;const el=document.getElementById('atimer-'+id);if(el)el.textContent=fmt(s.seg);},1000);}
   else if(s.estado==='activa'){clearInterval(s.iv);s.horaFin=new Date();s.estado='terminado';}
   else{clearInterval(s.iv);armadoTipos[id]={seg:0,iv:null,estado:'pendiente',horaInicio:null,horaFin:null,esManual:false};}
-  renderArmado();
+  renderArmado();guardarLS();
 }
 function guardarManualArmado(id){
   const ini=document.getElementById('amin-'+id).value;
@@ -1050,14 +1077,14 @@ function guardarManualArmado(id){
   if(seg<=0){alert('Fin debe ser mayor que inicio.');return;}
   const s=armadoTipos[id];clearInterval(s.iv);
   s.seg=seg;s.estado='terminado';s.esManual=true;s.horaInicio=ini;s.horaFin=fin;
-  renderArmado();
+  renderArmado();guardarLS();
 }
 function addInc(id){
   const tipo=document.getElementById('inc-tipo-'+id).value;
   const nota=document.getElementById('inc-nota-'+id).value.trim()||'—';
   incidencias[id].push({tipo,nota});
   document.getElementById('inc-nota-'+id).value='';
-  renderArmado();
+  renderArmado();guardarLS();
 }
 function otraSesionArmado(){
   document.getElementById('armado-num').value=parseInt(document.getElementById('armado-num').value||1)+1;
