@@ -580,6 +580,7 @@ let reconteos=[];
 let armadoTipos={};
 TIPOS.forEach(t=>armadoTipos[t.id]={seg:0,iv:null,estado:'pendiente',horaInicio:null,horaFin:null,esManual:false});
 let incidencias={};TIPOS.forEach(t=>incidencias[t.id]=[]);
+let notasArmado={};TIPOS.forEach(t=>notasArmado[t.id]=[]);
 
 // Pausas
 let pausaCtx={};
@@ -631,6 +632,7 @@ function guardarLS(){
       pausas:pausasSer,
       armadoTipos:atSer,
       incidencias:Object.fromEntries(Object.entries(incidencias).map(([k,v])=>[k,v||[]])),
+      notasArmado:Object.fromEntries(Object.entries(notasArmado).map(([k,v])=>[k,v||[]])),
       armadoNum:document.getElementById('armado-num')?document.getElementById('armado-num').value:'1',
       notas:{
         p1:document.getElementById('notas-p1').value,
@@ -719,6 +721,11 @@ function cargarLS(){
     if(d.incidencias){
       Object.keys(d.incidencias).forEach(id=>{
         if(Array.isArray(d.incidencias[id]))incidencias[id]=d.incidencias[id];
+      });
+    }
+    if(d.notasArmado){
+      Object.keys(d.notasArmado).forEach(id=>{
+        if(Array.isArray(d.notasArmado[id]))notasArmado[id]=d.notasArmado[id];
       });
     }
     if(d.armadoNum){
@@ -1047,74 +1054,123 @@ function renderArmado(){
   sorted.forEach((t,idx)=>{
     const s=armadoTipos[t.id];
     const inc=incidencias[t.id]||[];
+    const notas=notasArmado[t.id]||[];
     const cls=s.estado==='activa'?'activo':s.estado==='terminado'?'terminado':'';
     const estLabel={pendiente:'— PENDIENTE',activa:'● EN CURSO',terminado:'✓ TERMINADO'}[s.estado];
-    const btnLabel=s.estado==='pendiente'?'▶ Iniciar':s.estado==='activa'?'■ Terminar':'↺ Reiniciar';
-    const btnCls=s.estado==='pendiente'?'primary':s.estado==='activa'?'danger':'';
-    const hi=s.horaInicio?(typeof s.horaInicio==='string'?s.horaInicio:s.horaInicio.toTimeString().slice(0,5)):'';
+    const hi=typeof s.horaInicio==='string'?s.horaInicio:(s.horaInicio?s.horaInicio.toTimeString().slice(0,5):'');
+    const hf=typeof s.horaFin==='string'?s.horaFin:(s.horaFin?s.horaFin.toTimeString().slice(0,5):'');
+    // totales de cartas desde conteoTipos
+    const ct=conteoTipos[t.id];
+    const bordeA=ct&&ct.bordeA?ct.bordeA:0;
+    const bordeG=ct&&ct.bordeG?ct.bordeG:0;
+    const bordeT=ct&&ct.total?ct.total:conteo[t.id]||0;
     const d=document.createElement('div');
     d.className='armado-card '+cls;
     d.innerHTML=`
       <div class="ac-header">
         <div class="ac-dot" style="background:${t.color}"></div>
         <div class="ac-nombre">${t.label}</div>
-        <div class="ac-cantidad">${conteo[t.id]} cartas · #${idx+1}</div>
+        <div class="ac-cantidad">${conteo[t.id]} · #${idx+1}</div>
       </div>
       <div class="ac-body">
         <div>
           <div class="ac-timer ${s.estado==='activa'?'running':''}" id="atimer-${t.id}">${fmt(s.seg)}</div>
-          <div class="ac-hora-inicio">${hi?'Inicio: '+hi+(s.horaFin?(typeof s.horaFin==='string'?' → Fin: '+s.horaFin:' → Fin: '+s.horaFin.toTimeString().slice(0,5)):''):'—'}</div>
+          <div class="ac-hora-inicio" id="ahoras-${t.id}">${hi?'Inicio: '+hi+(hf?' → Fin: '+hf:''):'—'}</div>
           <div class="ac-estado">${estLabel}</div>
-          <div class="btn-row"><button class="btn ${btnCls}" onclick="toggleArmado('${t.id}')">${btnLabel}</button></div>
+          ${bordeT>0?`<div style="display:flex;gap:8px;font-size:10px;margin:4px 0;">
+            <span style="color:#f5c842;">A:${bordeA}</span>
+            <span style="color:#aaaaaa;">G:${bordeG}</span>
+            <span style="color:var(--text);">T:${bordeT}</span>
+          </div>`:''}
+          <div class="btn-row" style="margin-bottom:8px;">
+            ${s.estado==='pendiente'?`<button class="btn primary" onclick="iniciarArmado('${t.id}')">▶ Iniciar</button>`:''}
+            ${s.estado==='activa'?`<button class="btn danger" onclick="terminarArmado('${t.id}')">■ Terminar</button>`:''}
+            ${s.estado==='terminado'?`<button class="btn" onclick="reiniciarArmado('${t.id}')">↺ Reiniciar</button>`:''}
+          </div>
           <div class="ac-manual">
-            <div class="ac-manual-label">Cuaderno:</div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:4px;">
-              <div><div class="field-label">Inicio</div><input type="time" id="amin-${t.id}"/></div>
-              <div><div class="field-label">Fin</div><input type="time" id="afin-${t.id}"/></div>
+            <div class="ac-manual-label">Cuaderno — hora inicio y fin:</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:6px;">
+              <div><div class="field-label">Inicio</div><input type="time" id="amin-${t.id}" value="${hi||''}" onchange="actualizarHoraArmado('${t.id}','inicio',this.value)"/></div>
+              <div><div class="field-label">Fin</div><input type="time" id="afin-${t.id}" value="${hf||''}" onchange="actualizarHoraArmado('${t.id}','fin',this.value)"/></div>
             </div>
-            <button class="btn" onclick="guardarManualArmado('${t.id}')">Guardar ${t.label}</button>
+            <button class="btn success" onclick="guardarManualArmado('${t.id}')">Guardar ${t.label}</button>
           </div>
         </div>
         <div>
           <div style="font-size:10px;color:var(--muted);margin-bottom:5px;letter-spacing:1px;">INCIDENCIAS</div>
-          <div class="inc-list">${inc.length?inc.map(i=>`<div class="inc-item"><span class="inc-tag">${i.tipo}</span><span>${i.nota}</span></div>`).join(''):'<div style="color:var(--muted);font-size:11px;">Sin incidencias.</div>'}</div>
-          <div class="inc-form">
+          <div class="inc-list">${inc.length?inc.map((inc,ii)=>`<div class="inc-item"><span class="inc-tag">${inc.tipo}</span><span>${inc.nota}</span></div>`).join(''):'<div style="color:var(--muted);font-size:11px;">Sin incidencias.</div>'}</div>
+          <div class="inc-form" style="margin-bottom:10px;">
             <select id="inc-tipo-${t.id}"><option value="carta_faltante">Carta faltante</option><option value="error_posicion">Error de posición</option><option value="ritmo_bajo">Ritmo bajo</option><option value="otro">Otro</option></select>
             <input type="text" id="inc-nota-${t.id}" placeholder="Nota..."/>
             <button class="btn" onclick="addInc('${t.id}')">+</button>
+          </div>
+          <div style="font-size:10px;color:var(--muted);margin-bottom:5px;letter-spacing:1px;">NOTAS</div>
+          <div id="notas-armado-lista-${t.id}">${notas.map((n,ni)=>`<div style="font-size:11px;padding:4px 0;border-bottom:.5px solid var(--border);color:var(--text);">${n}</div>`).join('')}</div>
+          <div style="display:flex;gap:4px;margin-top:6px;">
+            <input type="text" id="nota-armado-input-${t.id}" placeholder="Nota..." style="flex:1;font-size:11px;padding:4px 6px;" onblur="autoGuardarNota('${t.id}')"/>
+            <button class="btn" onclick="addNotaArmado('${t.id}')">+</button>
           </div>
         </div>
       </div>`;
     c.appendChild(d);
   });
 }
-function toggleArmado(id){
+function iniciarArmado(id){
   const s=armadoTipos[id];
-  if(s.estado==='pendiente'){
-    const now=new Date();
-    s.horaInicio=now.toTimeString().slice(0,5);
-    s.estado='activa';
-    s.iv=setInterval(()=>{s.seg++;const el=document.getElementById('atimer-'+id);if(el)el.textContent=fmt(s.seg);},1000);
-  } else if(s.estado==='activa'){
-    clearInterval(s.iv);
-    s.horaFin=new Date().toTimeString().slice(0,5);
-    s.estado='terminado';
-  } else {
-    clearInterval(s.iv);
-    armadoTipos[id]={seg:0,iv:null,estado:'pendiente',horaInicio:null,horaFin:null,esManual:false};
-  }
+  const now=new Date();
+  s.horaInicio=now.toTimeString().slice(0,5);
+  s.estado='activa';
+  s.iv=setInterval(()=>{s.seg++;const el=document.getElementById('atimer-'+id);if(el)el.textContent=fmt(s.seg);},1000);
+  // actualizar input de hora inicio en el DOM sin re-renderizar todo
+  const inputIni=document.getElementById('amin-'+id);
+  if(inputIni)inputIni.value=s.horaInicio;
+  const horasEl=document.getElementById('ahoras-'+id);
+  if(horasEl)horasEl.textContent='Inicio: '+s.horaInicio;
   renderArmado();guardarLS();
 }
+function terminarArmado(id){
+  const s=armadoTipos[id];
+  clearInterval(s.iv);
+  s.horaFin=new Date().toTimeString().slice(0,5);
+  s.estado='terminado';
+  // actualizar input fin sin borrar inicio
+  const inputFin=document.getElementById('afin-'+id);
+  if(inputFin)inputFin.value=s.horaFin;
+  renderArmado();guardarLS();
+}
+function reiniciarArmado(id){
+  clearInterval(armadoTipos[id].iv);
+  armadoTipos[id]={seg:0,iv:null,estado:'pendiente',horaInicio:null,horaFin:null,esManual:false};
+  renderArmado();guardarLS();
+}
+function actualizarHoraArmado(id,campo,val){
+  // actualiza hora sin perder datos ni re-renderizar
+  const s=armadoTipos[id];
+  if(campo==='inicio')s.horaInicio=val;
+  else s.horaFin=val;
+  const horasEl=document.getElementById('ahoras-'+id);
+  if(horasEl){
+    const hi=s.horaInicio||'';
+    const hf=s.horaFin||'';
+    horasEl.textContent=hi?'Inicio: '+hi+(hf?' → Fin: '+hf:''):'—';
+  }
+  guardarLS();
+}
 function guardarManualArmado(id){
-  const ini=document.getElementById('amin-'+id).value;
-  const fin=document.getElementById('afin-'+id).value;
-  if(!ini||!fin){alert('Ingresa inicio y fin.');return;}
-  const [ih,im]=ini.split(':').map(Number);
-  const [fh,fm]=fin.split(':').map(Number);
-  let seg=(fh*60+fm-(ih*60+im))*60;
-  if(seg<=0){alert('Fin debe ser mayor que inicio.');return;}
-  const s=armadoTipos[id];clearInterval(s.iv);
-  s.seg=seg;s.estado='terminado';s.esManual=true;s.horaInicio=ini;s.horaFin=fin;
+  const ini=document.getElementById('amin-'+id)?.value||armadoTipos[id].horaInicio||'';
+  const fin=document.getElementById('afin-'+id)?.value||armadoTipos[id].horaFin||'';
+  const s=armadoTipos[id];
+  // calcular duración solo si hay inicio y fin
+  if(ini&&fin){
+    const [ih,im]=ini.split(':').map(Number);
+    const [fh,fm]=fin.split(':').map(Number);
+    let seg=(fh*60+fm-(ih*60+im))*60;
+    if(seg>0){s.seg=seg;}
+  }
+  clearInterval(s.iv);
+  if(ini)s.horaInicio=ini;
+  if(fin)s.horaFin=fin;
+  s.estado='terminado';s.esManual=true;
   renderArmado();guardarLS();
 }
 function addInc(id){
@@ -1123,6 +1179,25 @@ function addInc(id){
   incidencias[id].push({tipo,nota});
   document.getElementById('inc-nota-'+id).value='';
   renderArmado();guardarLS();
+}
+function autoGuardarNota(id){
+  const input=document.getElementById('nota-armado-input-'+id);
+  if(!input)return;
+  const val=input.value.trim();
+  if(!val)return;
+  if(!notasArmado[id])notasArmado[id]=[];
+  notasArmado[id].push(val);
+  input.value='';
+  // actualizar lista sin re-renderizar todo
+  const lista=document.getElementById('notas-armado-lista-'+id);
+  if(lista)lista.innerHTML=notasArmado[id].map(n=>`<div style="font-size:11px;padding:4px 0;border-bottom:.5px solid var(--border);color:var(--text);">${n}</div>`).join('');
+  guardarLS();
+}
+function addNotaArmado(id){
+  autoGuardarNota(id); // guardar la actual si tiene texto
+  // crear nuevo campo (ya está en el DOM, solo limpiar)
+  const input=document.getElementById('nota-armado-input-'+id);
+  if(input){input.value='';input.focus();}
 }
 function otraSesionArmado(){
   document.getElementById('armado-num').value=parseInt(document.getElementById('armado-num').value||1)+1;
@@ -1320,6 +1395,7 @@ function finalizarFase(phase){
       tiemposPorTipo:sorted.map(t=>({tipo:t.label,seg:armadoTipos[t.id].seg,fmt:fmt(armadoTipos[t.id].seg),cartas:conteo[t.id],segPorCarta:conteo[t.id]>0&&armadoTipos[t.id].seg>0?+(armadoTipos[t.id].seg/conteo[t.id]).toFixed(1):null,estado:armadoTipos[t.id].estado,horaInicio:armadoTipos[t.id].horaInicio,horaFin:armadoTipos[t.id].horaFin})),
       resumen:{totalSeg:totA,totalFmt:fmt(totA),pausasSeg:totP,pausasFmt:fmt(totP),efectivoSeg:ef,efectivoFmt:fmt(ef)},
       incidencias:sorted.reduce((a,t)=>{if(incidencias[t.id].length)a[t.label]=incidencias[t.id];return a;},{}),
+      notas:sorted.reduce((a,t)=>{if((notasArmado[t.id]||[]).length)a[t.label]=notasArmado[t.id];return a;},{}),
       pausas:pausaCtx.p2.lista.map(p=>({tipo:p.etapa,durSeg:p.seg,durFmt:fmt(p.seg),nota:p.nota})),
       notas:document.getElementById('notas-p2').value};
 
