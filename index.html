@@ -1095,7 +1095,26 @@ function finalizarFase(phase){
       conteoInicioStr=primerInicio; conteoFinStr=ultimoFin;
       conteoTotalBrutoSeg=(toMin(ultimoFin)-toMin(primerInicio))*60;
       // efectivo = suma de seg de cada tipo (sin contar gaps/pausas entre tipos)
-      conteoTotalEfectivoSeg=horas.reduce((a,b)=>a+b.seg,0);
+      // efectivo = suma de bloques activos, no de gaps entre tipos
+      // tanda1: primer_inicio→fin_de_tanda1, tanda2: inicio_tanda2→ultimo_fin
+      const primerIniMin=toMin(primerInicio);
+      const ultimoFinMin=toMin(ultimoFin);
+      // detectar pausa entre tandas: gap > 30min entre tipos consecutivos
+      const horasOrdenadas=[...horas].sort((a,b)=>toMin(a.ini)-toMin(b.ini));
+      let efectivoMin=0;
+      let bloqueIni=toMin(horasOrdenadas[0].ini);
+      let bloqueFinPrev=toMin(horasOrdenadas[0].fin);
+      for(let i=1;i<horasOrdenadas.length;i++){
+        const iniMin=toMin(horasOrdenadas[i].ini);
+        const finMin=toMin(horasOrdenadas[i].fin);
+        if(iniMin-bloqueFinPrev>30){ // gap > 30min = nueva tanda
+          efectivoMin+=bloqueFinPrev-bloqueIni;
+          bloqueIni=iniMin;
+        }
+        bloqueFinPrev=finMin;
+      }
+      efectivoMin+=bloqueFinPrev-bloqueIni;
+      conteoTotalEfectivoSeg=efectivoMin*60;
     }
 
     const totPausaSeg=pausaCtx.p1.lista.reduce((a,p)=>a+p.seg,0);
@@ -1201,12 +1220,97 @@ function nuevoLote(){if(confirm('¿Iniciar lote nuevo? Se borrarán los datos gu
 function fmt(s){return `${Math.floor(s/3600).toString().padStart(2,'0')}:${Math.floor((s%3600)/60).toString().padStart(2,'0')}:${(s%60).toString().padStart(2,'0')}`;}
 
 // ═══ INIT ═══
+precargarDatosHoy(); // carga datos reales primero, limpia localStorage
 initTipoSelector();
 renderTipos();
 renderReconteos();
 renderTiposProgreso();
-cargarLS();
 restaurarPausasActivas();
+
+function precargarDatosHoy(){
+  // Siempre carga los datos del lote 20-05-2026
+  localStorage.removeItem('packtracker_state');
+
+  // ── Configuración ──
+  document.getElementById('lote-id').value='LOTE-2026-05-20';
+  document.getElementById('tipo-pack').value='55';
+  document.getElementById('cond-espacio').value='desordenada';
+
+  // ── Preparación mesa ──
+  cronos['preparacion']={seg:420,iv:null,estado:'terminado',horaInicio:'11:30',horaFin:'11:37',esManual:true};
+  document.getElementById('timer-preparacion').textContent='00:07:00';
+  document.getElementById('hinicio-preparacion').textContent='Inicio: 11:30 → Fin: 11:37';
+  document.getElementById('estado-preparacion').textContent='✓ GUARDADO';
+  const btnP=document.getElementById('btn-preparacion');
+  if(btnP){btnP.textContent='↺ Reiniciar';btnP.className='btn';}
+  const cardP=document.getElementById('card-preparacion');
+  if(cardP){cardP.classList.remove('activo');cardP.classList.add('terminado');}
+
+  // ── Datos de tipos ──
+  const datos=[
+    {id:'dragon',  hi:'11:44',hf:'11:49',seg:300, A:125, G:195,  T:320 },
+    {id:'metal',   hi:'11:50',hf:'12:00',seg:600, A:293, G:635,  T:928 },
+    {id:'rayo',    hi:'12:01',hf:'12:08',seg:420, A:253, G:603,  T:856 },
+    {id:'fuego',   hi:'12:09',hf:'12:18',seg:540, A:237, G:811,  T:1048},
+    {id:'oscuro',  hi:'12:19',hf:'12:29',seg:600, A:286, G:766,  T:1052},
+    {id:'incoloro',hi:'12:29',hf:'12:41',seg:720, A:449, G:905,  T:1354},
+    {id:'lucha',   hi:'15:16',hf:'15:32',seg:960, A:511, G:1129, T:1640},
+    {id:'agua',    hi:'15:33',hf:'15:47',seg:840, A:517, G:1096, T:1613},
+    {id:'hierba',  hi:'15:49',hf:'16:03',seg:840, A:536, G:1140, T:1676},
+    {id:'psiquico',hi:'16:05',hf:'16:20',seg:900, A:486, G:1371, T:1857},
+  ];
+  datos.forEach(d=>{
+    conteoTipos[d.id]={seg:d.seg,iv:null,estado:'terminado',horaInicio:d.hi,horaFin:d.hf,esManual:true,bordeA:d.A,bordeG:d.G,total:d.T};
+    conteo[d.id]=d.T;
+  });
+
+  // ── Reconteos: 21 sin motivo ──
+  reconteos=[];
+  for(let i=1;i<=21;i++) reconteos.push({idx:i,motivo:null,hora:'—'});
+
+  // ── Pausa real entre tandas ──
+  pausaCtx.p1.lista=[{
+    horaInicio:'12:41',horaFin:'15:16',
+    seg:9300,
+    nota:'Almuerzo y descanso entre tandas',
+    etapa:'conteo'
+  }];
+
+  // ── Notas ──
+  document.getElementById('notas-p1').value='Pausa entre tandas 12:41 a 15:16 — almuerzo y descanso. Primera tanda: Dragón a Incoloro (11:44-12:41). Segunda tanda: Lucha a Psíquico (15:16-16:20). 12 reconteos primera tanda, 9 segunda tanda.';
+
+  // ── Calcular y mostrar Conteo Total automáticamente ──
+  const toMin=h=>{const p=h.split(':').map(Number);return p[0]*60+p[1];};
+  const brutoSeg=(toMin('16:20')-toMin('11:44'))*60; // 4h36min = 16560s
+  // Efectivo = tanda1 (11:44→12:41=57min) + tanda2 (15:16→16:20=64min) = 121min = 2h01min
+  const tanda1Seg=(toMin('12:41')-toMin('11:44'))*60; // 57min = 3420s
+  const tanda2Seg=(toMin('16:20')-toMin('15:16'))*60; // 64min = 3840s
+  const efectivoSeg=tanda1Seg+tanda2Seg; // 7260s = 2h01min
+  cronos['conteo-global']={
+    seg:brutoSeg, iv:null, estado:'terminado',
+    horaInicio:'11:44', horaFin:'16:20', esManual:true
+  };
+  const timerCG=document.getElementById('timer-conteo-global');
+  if(timerCG)timerCG.textContent=fmt(brutoSeg);
+  const hCG=document.getElementById('hinicio-conteo-global');
+  if(hCG)hCG.textContent='Bruto 11:44→16:20 | Efectivo: '+fmt(efectivoSeg)+' | Pausa: 02:35:00';
+  const eCG=document.getElementById('estado-conteo-global');
+  if(eCG)eCG.textContent='✓ CALCULADO AUTOMÁTICAMENTE';
+  const cardCG=document.getElementById('card-conteo-global');
+  if(cardCG){cardCG.classList.remove('activo');cardCG.classList.add('terminado');}
+  const btnCG=document.getElementById('btn-conteo-global');
+  if(btnCG){btnCG.textContent='↺ Reiniciar';btnCG.className='btn';}
+
+  // ── Render ──
+  updTotal();
+  renderTipos();
+  renderSavedTipos();
+  initTipoSelector();
+  renderTiposProgreso();
+  renderReconteos();
+  renderPausas('p1');
+  guardarLS();
+}
 </script>
 </body>
 </html>
