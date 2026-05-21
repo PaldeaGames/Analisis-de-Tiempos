@@ -1442,8 +1442,11 @@ function finalizarFase(phase){
 
   jsonExports[phase]=data;
   document.getElementById('rg-'+phase).innerHTML=grid.map(([l,v])=>`<div class="resumen-field"><label>${l}</label><div class="v">${v}</div></div>`).join('');
-  document.getElementById('eb-'+phase).textContent=JSON.stringify(data,null,2);
+  // eb-X elements removed (PDF only) — store data silently
+  const ebEl=document.getElementById('eb-'+phase);
+  if(ebEl)ebEl.textContent=JSON.stringify(data,null,2);
   const r=document.getElementById('resumen-'+phase);r.classList.add('on');r.scrollIntoView({behavior:'smooth'});
+  actualizarBotonesFin();
   guardarLS();
 }
 
