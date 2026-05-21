@@ -241,7 +241,7 @@ textarea:focus{outline:none;border-color:var(--accent);}
 
 <!-- ═══ FASE 1 ═══ -->
 <div class="phase-panel active" id="phase-0">
-  <div class="info-box">ℹ️ <strong>Fase 1 — Preparación + Conteo.</strong> Una sola vez por lote. Los datos se guardan automáticamente en el navegador. <span class="persist-badge">● AUTO-GUARDADO</span></div>
+  <div class="info-box">ℹ️ <strong>Fase 1 — Preparación + Conteo.</strong> Una sola vez por lote. Los datos se guardan automáticamente en el navegador. <span class="persist-badge" id="autosave-badge">● AUTO-GUARDADO</span></div>
 
   <div class="panel">
     <div class="section-title">Configuración del Lote</div>
@@ -598,16 +598,42 @@ document.getElementById('lote-id').value='LOTE-'+new Date().toISOString().slice(
 // ═══ LOCAL STORAGE ═══
 function guardarLS(){
   try{
+    // serializar conteoTipos sin funciones ni intervalos
+    const ctSer={};
+    Object.keys(conteoTipos).forEach(id=>{
+      const s=conteoTipos[id];
+      ctSer[id]={seg:s.seg,estado:s.estado,horaInicio:s.horaInicio,horaFin:s.horaFin,esManual:s.esManual,bordeA:s.bordeA||0,bordeG:s.bordeG||0,total:s.total||0};
+    });
+    const cronosSer={};
+    Object.keys(cronos).forEach(id=>{
+      const c=cronos[id];
+      cronosSer[id]={seg:c.seg,estado:c.estado,horaInicio:c.horaInicio,horaFin:c.horaFin,esManual:c.esManual};
+    });
+    const pausasSer={};
+    ['p1','p2','p3','p4'].forEach(ctx=>{
+      pausasSer[ctx]=pausaCtx[ctx].lista.map(p=>({horaInicio:p.horaInicio,horaFin:p.horaFin,seg:p.seg,nota:p.nota,etapa:p.etapa||''}));
+    });
     const data={
       loteId:document.getElementById('lote-id').value,
       tipoPack:document.getElementById('tipo-pack').value,
       condEspacio:document.getElementById('cond-espacio').value,
       conteo,reconteos,phaseDone,
-      notas:{p1:document.getElementById('notas-p1').value,p2:document.getElementById('notas-p2').value},
+      conteoTipos:ctSer,
+      cronos:cronosSer,
+      pausas:pausasSer,
+      notas:{
+        p1:document.getElementById('notas-p1').value,
+        p2:document.getElementById('notas-p2').value,
+        p3:document.getElementById('notas-p3').value,
+        p4:document.getElementById('notas-p4').value
+      },
     };
     localStorage.setItem('packtracker_state',JSON.stringify(data));
-  }catch(e){}
+    const badge=document.getElementById('autosave-badge');
+    if(badge){const now=new Date();badge.textContent='● GUARDADO '+now.toTimeString().slice(0,5);}
+  }catch(e){console.error('guardarLS error',e);}
 }
+
 function cargarLS(){
   try{
     const raw=localStorage.getItem('packtracker_state');
@@ -616,14 +642,59 @@ function cargarLS(){
     if(d.loteId)document.getElementById('lote-id').value=d.loteId;
     if(d.tipoPack)document.getElementById('tipo-pack').value=d.tipoPack;
     if(d.condEspacio)document.getElementById('cond-espacio').value=d.condEspacio;
-    if(d.conteo){Object.assign(conteo,d.conteo);}
+    if(d.conteo)Object.assign(conteo,d.conteo);
     if(d.reconteos)reconteos=d.reconteos;
-    if(d.notas){
-      if(d.notas.p1)document.getElementById('notas-p1').value=d.notas.p1;
-      if(d.notas.p2)document.getElementById('notas-p2').value=d.notas.p2;
+    if(d.phaseDone)phaseDone=d.phaseDone;
+    if(d.conteoTipos){
+      Object.keys(d.conteoTipos).forEach(id=>{
+        if(conteoTipos[id])Object.assign(conteoTipos[id],d.conteoTipos[id]);
+      });
     }
-    renderTipos();renderReconteos();
-  }catch(e){}
+    if(d.cronos){
+      Object.keys(d.cronos).forEach(id=>{
+        if(cronos[id])Object.assign(cronos[id],d.cronos[id]);
+      });
+      // restaurar display de cronos
+      ['preparacion','conteo-global','empaque','etiquetado'].forEach(id=>{
+        const c=cronos[id];
+        if(c.seg>0){
+          const el=document.getElementById('timer-'+id);
+          if(el)el.textContent=fmt(c.seg);
+          const hi=document.getElementById('hinicio-'+id);
+          if(hi&&c.horaInicio)hi.textContent='Inicio: '+c.horaInicio+(c.horaFin?' → Fin: '+c.horaFin:'');
+          const es=document.getElementById('estado-'+id);
+          if(es)es.textContent=c.estado==='terminado'?'✓ GUARDADO':c.estado==='activa'?'● EN CURSO':'— PENDIENTE';
+          const card=document.getElementById('card-'+id);
+          if(card){card.classList.toggle('terminado',c.estado==='terminado');card.classList.toggle('activo',c.estado==='activa');}
+          const btn=document.getElementById('btn-'+id);
+          if(btn){btn.textContent=c.estado==='terminado'?'↺ Reiniciar':c.estado==='activa'?'■ Terminar':'▶ Iniciar';btn.className='btn'+(c.estado==='activa'?' danger':c.estado==='pendiente'?' primary':'');}
+        }
+      });
+    }
+    if(d.pausas){
+      ['p1','p2','p3','p4'].forEach(ctx=>{
+        if(d.pausas[ctx])pausaCtx[ctx].lista=d.pausas[ctx];
+      });
+    }
+    if(d.notas){
+      ['p1','p2','p3','p4'].forEach(p=>{
+        const el=document.getElementById('notas-'+p);
+        if(el&&d.notas[p])el.value=d.notas[p];
+      });
+    }
+    // restaurar progreso de fases
+    if(d.phaseDone){
+      document.querySelectorAll('.step').forEach((s,i)=>{
+        s.classList.remove('active','done','locked');
+        if(i===0)s.classList.add('active');
+        else if(d.phaseDone[i])s.classList.add('done');
+        else s.classList.add('locked');
+      });
+      document.getElementById('prog-bar').style.width=(d.phaseDone.filter(Boolean).length*25)+'%';
+    }
+    renderTipos();renderReconteos();renderSavedTipos();initTipoSelector();renderTiposProgreso();
+    ['p1','p2','p3','p4'].forEach(ctx=>renderPausas(ctx));
+  }catch(e){console.error('cargarLS error',e);}
 }
 
 // ═══ PHASE NAV ═══
@@ -1226,9 +1297,20 @@ renderTipos();
 renderReconteos();
 renderTiposProgreso();
 restaurarPausasActivas();
+// Autosave cada 5 segundos
+setInterval(()=>{
+  try{guardarLS();}catch(e){}
+}, 5000);
+// Guardar al cerrar/salir
+window.addEventListener('beforeunload', ()=>{try{guardarLS();}catch(e){}});
 
 function precargarDatosHoy(){
-  // Siempre carga los datos del lote 20-05-2026
+  // Solo corre una vez. Si ya se precargó antes, cargar desde localStorage normal.
+  if(localStorage.getItem('packtracker_precargado_20260520')){
+    cargarLS();
+    return;
+  }
+  localStorage.setItem('packtracker_precargado_20260520','1');
   localStorage.removeItem('packtracker_state');
 
   // ── Configuración ──
